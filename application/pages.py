@@ -1,7 +1,7 @@
 from flask import render_template
 from application import app
 from application.mongodb import last_days
-from application.config import db_day_to_human
+from application.config import db_day_to_human, db_day_to_linkdate
 
 from urllib.parse import urlparse
 import time
@@ -21,6 +21,7 @@ def index():
             days.append({
                     'day': p.get('day'),
                     'human_date': db_day_to_human(p.get('day')),
+                    'link_date': db_day_to_linkdate(p.get('day')),
                     'posts': [p, ],
                 })
     val = {

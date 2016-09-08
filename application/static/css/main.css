@@ -160,6 +160,10 @@ html, body {
     font-size: 20px;
     margin: 12px 0 8px 20px;
 }
+a.day_title, a.day_title:visited, a.day_title:hover {
+    text-decoration: none;
+    color: #323232;
+}
 
 #post_create {
     /* Just to center the form on the page */
@@ -230,3 +234,4 @@ html, body {
 article {
     margin-bottom: 1em;
 }
+
