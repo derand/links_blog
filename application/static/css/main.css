@@ -1,0 +1,232 @@
+/* Changed html5up-verti themplate (https://html5up.net/verti) */
+/*@import url("//fonts.googleapis.com/css?family=Oleo+Script:400|Open+Sans:300,300italic,600,600italic,800");*/
+@import '//fonts.googleapis.com/css?family=Andika';
+
+html, body, div, span, applet, object, iframe, h1, h2, h3, h4, h5, h6, p, blockquote, pre, a, abbr, acronym, address, big, cite, code, del, dfn, em, img, ins, kbd, q, s, samp, small, strike, strong, sub, sup, tt, var, b, u, i, center, dl, dt, dd, ol, ul, li, fieldset, form, label, legend, table, caption, tbody, tfoot, thead, tr, th, td, article, aside, canvas, details, embed, figure, figcaption, footer, header, hgroup, menu, nav, output, ruby, section, summary, time, mark, audio, video {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  font-size: 100%;
+  font: inherit;
+  vertical-align: baseline;
+}
+body {
+  color: #323232;
+  font-family: 'Andika', sans-serif;
+  font-size: 13pt;
+}
+#header-wrapper {
+/*  background-color: #F0F0F0;*/
+/*  height: 116px;**/
+  border-bottom: solid 2px #e0e0e0;
+  background-color: #e1e1e1;
+/*  background-image: -moz-linear-gradient(top, rgba(0, 0, 0, 0.05), rgba(0, 0, 0, 0)), url("/img/bg01.png");*/
+  background: -moz-linear-gradient(top, rgba(0, 0, 0, 0.12), rgba(0, 0, 0, 0));
+  background: -webkit-linear-gradient(top, rgba(0, 0, 0, 0.12), rgba(0, 0, 0, 0));
+  background: -ms-linear-gradient(top, rgba(0, 0, 0, 0.12), rgba(0, 0, 0, 0));
+  background: linear-gradient(top, rgba(0, 0, 0, 0.12), rgba(0, 0, 0, 0));
+  background-position: top left, top left;
+  background-repeat: repeat-x, repeat;
+}
+#header {
+  position: relative;
+  padding: 15px 0 15px 0;
+  font-size: 24px;
+}
+.container {
+  max-width: 900px;
+  margin-left: auto;
+  margin-right: auto;
+/*  background-color: #fafafa;*/
+}
+#logo {
+  display: inline-block;
+  float: left;
+}
+h1, h2, h3, h4, h5, h6 {
+  color: #444;
+  font-weight: 800;
+}
+h2 {
+  font-size: 2.25em;
+  margin: 1em 0 1em 0;
+  line-height: 1em;
+}
+h3 {
+  font-size: 1.2em;
+  margin: 0.8em 0 0.8em 0;
+  line-height: 1em;
+}
+#footer-wrapper {
+/*  padding: 15px 0 0 0;*/
+/*  background-color: #F0F0F0;*/
+  border-top: solid 2px #e0e0e0;
+  height: 28px;
+  background-color: #e1e1e1;
+/*  background-image: -moz-linear-gradient(top, rgba(0, 0, 0, 0.05), rgba(0, 0, 0, 0)), url("/img/bg01.png");*/
+  background: -moz-linear-gradient(top, rgba(0, 0, 0, 0.12), rgba(0, 0, 0, 0));
+  background: -webkit-linear-gradient(top, rgba(0, 0, 0, 0.12), rgba(0, 0, 0, 0));
+  background: -ms-linear-gradient(top, rgba(0, 0, 0, 0.12), rgba(0, 0, 0, 0));
+  background: linear-gradient(top, rgba(0, 0, 0, 0.12), rgba(0, 0, 0, 0));
+  background-position: top left, top left;
+  background-repeat: repeat-x, repeat;
+}
+footer {
+  margin: 0;
+  font-size: 0.65em;
+}
+.row {
+/*  margin: -33px 0 0 0;*/
+/*  border-bottom: solid 1px transparent;*/
+  -moz-box-sizing: border-box;
+  -webkit-box-sizing: border-box;
+  box-sizing: border-box;
+}
+.row > * {
+/*  float: left;*/
+  -moz-box-sizing: border-box;
+  -webkit-box-sizing: border-box;
+  box-sizing: border-box;
+}
+#copyright {
+  color: #aaa;
+  padding: 7px 0 0 0;
+  text-align: center;
+}
+.footer-text-menu {
+  list-style: none;
+  line-height: inherit;
+}
+#copyright span:first-child {
+  border-left: 0;
+  margin-left: 0;
+  padding-left: 0;
+}
+#copyright span {
+  border-left: solid 1px #e0e0e0;
+  display: inline-block;
+  padding: 0 0 0 0.75em;
+  margin: 0 0 0 0.75em;
+}
+p, ul, ol, dl, table {
+  margin-bottom: 2em;
+  line-height: 39px;
+}
+
+html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+}
+#page-wrapper {
+    min-height: 100%;
+    margin-bottom: -31px;
+}
+* html #page-wrapper {
+    height: 100%;
+}
+#page-buffer {
+    height: 31px;
+}
+.menu {
+  padding: 0 0 0 2em;
+}
+
+#header a, #header a:visited, #header a:hover {
+    text-decoration: none;
+    color: #000;
+}
+
+.tag {
+/*    font-family: Verdana, Arial, Helvetica, sans-serif;*/
+    font-size: 12px;
+    color: #33E;
+    border: #e0e0e0;
+    border-style: solid;
+    border-width: 2px;
+    border-radius: 10px;
+    padding-left: 5px;
+    padding-right: 7px;
+    margin-left: 2px;
+
+    position: relative;
+    top: -2px;
+}
+.tag a, .tag a:visited, .tag a:hover {
+    text-decoration: none;
+}
+
+.day_title {
+    font-size: 20px;
+    margin: 12px 0 8px 20px;
+}
+
+#post_create {
+    /* Just to center the form on the page */
+    margin: 1em auto 1.5em auto;
+    width: 400px;
+    /* To see the outline of the form */
+    padding: 1em;
+    background-color: #f5f5f5;
+    border: 1px solid #CCC;
+    border-radius: 1em;
+}
+#post_create div + div {
+    margin-top: 1em;
+}
+#post_create label {
+    /* To make sure that all labels have the same size and are properly aligned */
+    display: inline-block;
+    width: 90px;
+    text-align: right;
+}
+#post_create input, textarea {
+    /* To make sure that all text fields have the same font settings
+       By default, textareas have a monospace font */
+/*    font: 1em sans-serif; */
+
+    /* To give the same size to all text field */
+    width: 300px;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
+
+    /* To harmonize the look & feel of text field border */
+    border: 1px solid #999;
+}
+#post_create input:focus, textarea:focus {
+    /* To give a little highlight on active elements */
+    border-color: #000;
+}
+#post_create textarea {
+    /* To properly align multiline text fields with their labels */
+    vertical-align: top;
+
+    /* To give enough room to type some text */
+    height: 3em;
+
+    /* To allow users to resize any textarea vertically
+       It does not work on all browsers */
+    resize: vertical;
+}
+#post_create .form_button {
+    /* To position the buttons to the same position of the text fields */
+    padding-left: 90px; /* same size as the label elements */
+}
+#post_create button {
+    /* This extra margin represent roughly the same space as the space
+       between the labels and their text fields */
+    margin-left: .5em;
+}
+#togglePostFormLink {
+/*    font-size: 20px;*/
+    font-weight: bold;
+    text-align: center;
+    margin-top: 1em;
+}
+#togglePostFormLink a, #togglePostFormLink a:visited, #togglePostFormLink a:hover {
+    text-decoration: none;
+    color: #33E;
+}
+article {
+    margin-bottom: 1em;
+}

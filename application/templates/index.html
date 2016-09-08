@@ -1,0 +1,33 @@
+{% extends "layout.html" %}
+
+{% block javascript %}
+    <script src="//code.jquery.com/jquery-3.1.0.min.js" integrity="sha256-cCueBR6CsyA4/9szpPfrX3s49M9vUU5BgtiJj06wt/s=" crossorigin="anonymous"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}" type="text/javascript"></script>
+{% endblock %}
+
+{% block content %}
+    <div id="togglePostFormLink">[<a href="#">Show/Hide Add new link form</a>]</div>
+    <!-- https://developer.mozilla.org/en-US/docs/Web/Guide/HTML/Forms/My_first_HTML_form -->
+    <form id="post_create" method="post">
+        <input type="hidden" name="redirect" value="{{ redirect_url }}">
+        <div>
+            <label for="form_url">URL:</label>
+            <input class="" id="form_url" name="url" value="">
+        </div>
+        <div>
+            <label for="form_description">Description:</label>
+            <textarea class="" id="form_description" name="description" rows=2></textarea>
+        </div>
+        <div>
+            <label for="form_tags">Tags(,):</label>
+            <input class="" id="form_tags" name="tags" value="">
+        </div>
+        <div class="form_button">
+            <button type="submit">Add URL</button>
+        </div>
+    </form>
+    <script type="text/javascript">$("#post_create").hide();</script>
+    {% for day in days %}
+        {% include 'day.html' %}
+    {% endfor %}
+{% endblock %}

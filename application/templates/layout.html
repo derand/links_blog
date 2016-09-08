@@ -1,0 +1,35 @@
+
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <title>Links blog{% if title %} - {{ title }}{% endif %}</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/main.css') }}">
+{% block javascript %}{% endblock %}
+</head>
+<body>
+    <div id="page-wrapper">
+    <!-- Header -->
+        <div id="header-wrapper">
+            <header id="header" class="container">
+                <!-- Logo -->
+                <a href="/"><!--div id="logo">Logo</div--> Links blog</a>
+            </header>
+        </div>
+        <!-- Content -->
+      <div class="container">
+      <!--div class="header row"><ul class="header-nav"><li class="header-nav-item"><a href="/">Links blog</a></li></ul></div -->
+{% block content %}{% endblock %}
+      </div>
+      <div id="page-buffer" class="container"></div>
+    </div>
+    <!-- Footer -->
+    <div id="footer-wrapper">
+        <footer id="footer" class="container">
+            <div id="copyright">
+                <span>© Andrei Derevyagin 2016</span><span>All rights reserved</span>
+            </div>
+        </footer>
+    </div>
+</body>
+</html>
