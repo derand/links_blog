@@ -233,5 +233,7 @@ a.day_title, a.day_title:visited, a.day_title:hover {
 }
 article {
     margin-bottom: 1em;
+    padding-left: 80px;
+    text-indent: -80px;
 }
 
