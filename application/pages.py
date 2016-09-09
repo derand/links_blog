@@ -1,6 +1,6 @@
 from flask import render_template, abort
 from application import app
-from application.mongodb import last_days, date
+from application.mongodb import posts_last_days, posts_date
 from application.config import db_day_to_human, db_day_to_linkdate, date_to_db
 
 from urllib.parse import urlparse
@@ -10,17 +10,19 @@ import datetime
 @app.route('/', defaults={'year': None, 'month': None, 'day': None})
 @app.route('/<int:year>-<int:month>-<int:day>.html')
 def index(year, month, day):
+    val = {}
     if year and month and day:
         try:
-            day = datetime.datetime(year, month, day).date()
+            d = datetime.datetime(year, month, day).date()
         except ValueError:
             abort(404)
-        day = date_to_db(day)
-        posts = date(day)
+        d = date_to_db(d)
+        posts = posts_date(d)
         if not posts:
             abort(404)
+        val['one_date'] = '%04d-%02d-%02d'%(year, month, day)
     else:
-        posts = last_days()
+        posts = posts_last_days()
     days = []
     for p in posts.get('posts', tuple()):
         if 'short_url' not in p:
@@ -36,11 +38,6 @@ def index(year, month, day):
                     'link_date': db_day_to_linkdate(p.get('day')),
                     'posts': [p, ],
                 })
-    val = {
-        #'title': 'Threads',
-        'days': days,
-    }
-    #print(posts)
-    #print(val)
+    val['days'] = days
     return render_template('index.html', **val)
 

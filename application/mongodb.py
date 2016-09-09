@@ -28,7 +28,7 @@ mongo = PyMongo(app)
 }
 '''
 
-def last_days(page=0, page_size=10):
+def posts_last_days(page=0, page_size=10):
     rv = None
     if mongo.db:
         arr = mongo.db.links.distinct('day')
@@ -51,7 +51,7 @@ def last_days(page=0, page_size=10):
         }
     return rv
 
-def date(db_day):
+def posts_date(db_day):
     rv = None
     if mongo.db:
         query = {
