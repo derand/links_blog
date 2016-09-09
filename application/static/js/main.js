@@ -29,16 +29,22 @@ $(function(){
                 i--;
             }
         }
+        var date = $("#post_create").find('input[name="date"]').val();
+        var prms = {
+                url: url,
+                description: description,
+                tag: tags,
+                //date: "2016-08-20"
+            };
+        console.log('--', date);
+        if (date) {
+            prms['date'] = date;
+        }
         console.log(url, description, tags);
         $.ajax({
             type: "POST",
             url: "/api/post_create",
-            data: {
-                url: url,
-                description: description,
-                tag: tags,
-                //day: "2016-08-20"
-            },
+            data: prms,
             success: function(data) {
                 console.log(data);
                 if (data.status == 200) {

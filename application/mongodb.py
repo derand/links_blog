@@ -28,7 +28,7 @@ mongo = PyMongo(app)
 }
 '''
 
-def last_days(page=0, page_size=10):
+def posts_last_days(page=0, page_size=10):
     rv = None
     if mongo.db:
         arr = mongo.db.links.distinct('day')
@@ -51,6 +51,19 @@ def last_days(page=0, page_size=10):
         }
     return rv
 
+def posts_date(db_day):
+    rv = None
+    if mongo.db:
+        query = {
+            'day': db_day,
+        }
+        cursor = mongo.db.links.find(query, sort=[('day', DESCENDING), ('created', ASCENDING)])
+        rv = {
+            'posts': tuple(cursor),
+        }
+    return rv
+
+
 def post_create(url=None, description=None, tags=[], day=None):
     post = None
     if mongo.db:
@@ -64,7 +77,7 @@ def post_create(url=None, description=None, tags=[], day=None):
             utc_dt = datetime.utcfromtimestamp(tm).replace(tzinfo=pytz.utc)
             tz = pytz.timezone(config.timezone)
             dt = utc_dt.astimezone(tz).date()
-            post['day'] = dt.year*1000 + dt.timetuple().tm_yday
+            post['day'] = config.date_to_db(dt)
         else:
             post['day'] = day
         if tags:
