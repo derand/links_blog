@@ -181,16 +181,16 @@ a.day_title, a.day_title:visited, a.day_title:hover {
 #post_create label {
     /* To make sure that all labels have the same size and are properly aligned */
     display: inline-block;
-    width: 90px;
+    width: 100px;
     text-align: right;
 }
 #post_create input, textarea {
     /* To make sure that all text fields have the same font settings
        By default, textareas have a monospace font */
-/*    font: 1em sans-serif; */
+    font-size: 100%;
 
     /* To give the same size to all text field */
-    width: 300px;
+    width: 290px;
     -moz-box-sizing: border-box;
     box-sizing: border-box;
 
