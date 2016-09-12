@@ -1,7 +1,7 @@
 from flask import render_template, abort, request, redirect, url_for
 from application import app
 from application.mongodb import posts_last_days, posts_date
-from application.config import db_day_to_human, db_day_to_linkdate, date_to_db
+from application.config import db_day_to_human, db_day_to_linkdate, date_to_db, pagination_dict
 
 from urllib.parse import urlparse
 import time
@@ -50,30 +50,5 @@ def index(year, month, day):
                 })
     val['days'] = days
     if posts.get('pages'):
-        pagination = []
-        if page==0:
-            pagination.append({ 'title': '«' })
-        else:
-            pagination.append({ 
-                'title': '«',
-                'url': '/?p=%d'%(page, )
-            })
-        for i in range(posts.get('pages', 0)):
-            p = { 'title': i+1 }
-            if i == page:
-                p['active'] = True
-            else:
-                if i:
-                    p['url'] = '/?p=%d'%(i+1, )
-                else:
-                    p['url'] = '/'
-            pagination.append(p)
-        if page==(posts.get('pages')-1):
-            pagination.append({ 'title': '»' })
-        else:
-            pagination.append({ 
-                'title': '»',
-                'url': '/?p=%d'%(page+2, )
-            })
-        val['pagination'] = pagination
+        val['pagination'] = pagination_dict(page, posts.get('pages'))
     return render_template('index.html', **val)
