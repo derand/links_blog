@@ -33,17 +33,19 @@ def posts_last_days(page=0, page_size=10):
     if mongo.db:
         arr = mongo.db.links.distinct('day')
         days = sorted(arr, reverse=True)
+        pages = len(arr) // page_size
+        if len(arr) % page_size:
+            pages += 1
         if page > 0 and page*page_size < len(days):
             days = days[page*page_size:]
+        elif page:
+            return { 'pages': pages }
         if len(days) > page_size:
             days = days[:page_size]
         query = {
             'day': { "$in": days },
         }
         cursor = mongo.db.links.find(query, sort=[('day', DESCENDING), ('created', ASCENDING)])
-        pages = len(arr) // page_size
-        if len(arr) % page_size:
-            pages += 1
         rv = {
             'posts': tuple(cursor),
             'pages': pages,
@@ -60,6 +62,7 @@ def posts_date(db_day):
         cursor = mongo.db.links.find(query, sort=[('day', DESCENDING), ('created', ASCENDING)])
         rv = {
             'posts': tuple(cursor),
+            'days': db_day,
         }
     return rv
 
