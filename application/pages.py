@@ -9,6 +9,7 @@ import datetime
 import sys
 
 @app.route('/', defaults={'year': None, 'month': None, 'day': None}, methods=['GET'])
+@app.route('/index.html', defaults={'year': None, 'month': None, 'day': None}, methods=['GET'])
 @app.route('/<int:year>-<int:month>-<int:day>.html', methods=['GET'])
 def index(year, month, day):
     #print(request.url, request.base_url)
@@ -30,7 +31,7 @@ def index(year, month, day):
             abort(404)
         val['one_date'] = '%04d-%02d-%02d'%(year, month, day)
     else:
-        posts = posts_last_days(page=page, page_size=10)
+        posts = posts_last_days(page=page, page_size=1)
         if posts and page and page >= posts.get('pages', sys.maxsize):
             return redirect(url_for('.index'), code=302)
     days = []
@@ -50,5 +51,5 @@ def index(year, month, day):
                 })
     val['days'] = days
     if posts.get('pages'):
-        val['pagination'] = pagination_dict(page, posts.get('pages'))
+        val['pagination'] = pagination_dict(page=page, pages=posts.get('pages'), center_side_count=2)
     return render_template('index.html', **val)
