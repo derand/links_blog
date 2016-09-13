@@ -5,7 +5,7 @@ from datetime import datetime, date
 import pytz, time
 import json
 from application.mongodb import post_create
-from application.config import date_to_db
+import application.common as common
 
 
 def check_auth():
@@ -32,7 +32,7 @@ def api_post_create():
         return json_response({ "status": 400, 'message': 'All params does not setted' })
     if d:
         day = datetime.strptime(d, "%Y-%m-%d").date()
-        day = date_to_db(day)
+        day = common.date_to_db(day)
     else:
         day = None
 

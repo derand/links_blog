@@ -17,18 +17,22 @@ def date_to_db(date):
 
 
 def pagination_dict(page, pages, center_side_count=2):
+    '''
+        center_side_count — count pages to show left|right from current page
+    '''
     # « 1 2 3 4 5 -6- 7 8 9 10 11 12 »
     def append_page(pagination, title, url=None, active=False):
         p = { 'title': title }
         if url and not active:
             p['url'] = url
         if active:
-            p['active'] = active
+            #p['active'] = active
+            p['class'] = 'active'
         pagination.append(p)
 
     pagination = []
     if page==0:
-        pagination.append({ 'title': '«' })
+        pagination.append({ 'title': '«', 'class': 'disabled' })
     else:
         pagination.append({ 
             'title': '«',
@@ -57,7 +61,7 @@ def pagination_dict(page, pages, center_side_count=2):
         append_page(pagination=pagination, title='...')
         append_page(pagination=pagination, title=pages, url='/?p=%d'%pages)
     if page==(pages-1):
-        pagination.append({ 'title': '»' })
+        pagination.append({ 'title': '»', 'class': 'disabled' })
     else:
         pagination.append({ 
             'title': '»',

@@ -214,7 +214,7 @@ a.day_title, a.day_title:visited, a.day_title:hover {
 }
 #post_create .form_button {
     /* To position the buttons to the same position of the text fields */
-    padding-left: 90px; /* same size as the label elements */
+    padding-left: 100px; /* same size as the label elements */
 }
 #post_create button {
     /* This extra margin represent roughly the same space as the space
@@ -252,13 +252,13 @@ ul.pagination li a, ul.pagination li span {
     border-radius: 5px;
 }
 ul.pagination li a.active, ul.pagination li span.active {
-    background-color: #8080ea;
+    background-color: #7f7ff9;
     color: white;
     border-radius: 5px;
 }
 ul.pagination li a:hover:not(.active) {
     background-color: #ddd;
 }
-ul.pagination li span:not(.active) {
+ul.pagination li span.disabled {
     color: gray;
 }

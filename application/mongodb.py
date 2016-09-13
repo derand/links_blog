@@ -5,7 +5,7 @@ import os
 import time
 import pytz
 from datetime import datetime, date
-import application.config as config
+import application.common as common
 
 app.config['MONGO_URI'] = os.environ.get('MONGODB_CONNECTION')
 mongo = PyMongo(app)
@@ -78,9 +78,9 @@ def post_create(url=None, description=None, tags=[], day=None):
         }
         if day is None:
             utc_dt = datetime.utcfromtimestamp(tm).replace(tzinfo=pytz.utc)
-            tz = pytz.timezone(config.timezone)
+            tz = pytz.timezone(common.timezone)
             dt = utc_dt.astimezone(tz).date()
-            post['day'] = config.date_to_db(dt)
+            post['day'] = common.date_to_db(dt)
         else:
             post['day'] = day
         if tags:

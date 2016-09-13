@@ -1,7 +1,7 @@
 from flask import render_template, abort, request, redirect, url_for
 from application import app
 from application.mongodb import posts_last_days, posts_date
-from application.config import db_day_to_human, db_day_to_linkdate, date_to_db, pagination_dict
+import application.common as common
 
 from urllib.parse import urlparse
 import time
@@ -23,15 +23,15 @@ def index(year, month, day):
             d = datetime.datetime(year, month, day).date()
         except ValueError:
             abort(404)
-        if p != 0:
+        if page != 0:
             abort(400)
-        d = date_to_db(d)
+        d = common.date_to_db(d)
         posts = posts_date(d)
         if not posts:
             abort(404)
         val['one_date'] = '%04d-%02d-%02d'%(year, month, day)
     else:
-        posts = posts_last_days(page=page, page_size=1)
+        posts = posts_last_days(page=page, page_size=10)
         if posts and page and page >= posts.get('pages', sys.maxsize):
             return redirect(url_for('.index'), code=302)
     days = []
@@ -45,11 +45,11 @@ def index(year, month, day):
         else:
             days.append({
                     'day': p.get('day'),
-                    'human_date': db_day_to_human(p.get('day')),
-                    'link_date': db_day_to_linkdate(p.get('day')),
+                    'human_date': common.db_day_to_human(p.get('day')),
+                    'link_date': common.db_day_to_linkdate(p.get('day')),
                     'posts': [p, ],
                 })
     val['days'] = days
     if posts.get('pages'):
-        val['pagination'] = pagination_dict(page=page, pages=posts.get('pages'), center_side_count=2)
+        val['pagination'] = common.pagination_dict(page=page, pages=posts.get('pages'), center_side_count=2)
     return render_template('index.html', **val)
