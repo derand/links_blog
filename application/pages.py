@@ -51,5 +51,5 @@ def index(year, month, day):
                 })
     val['days'] = days
     if posts.get('pages'):
-        val['pagination'] = common.pagination_dict(page=page, pages=posts.get('pages'), center_side_count=2)
+        val['pagination'] = common.pagination_dict(page=page, pages=posts.get('pages'), center_side_count=2, url_prefix='/index.html')
     return render_template('index.html', **val)
