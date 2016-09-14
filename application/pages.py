@@ -1,6 +1,7 @@
 from flask import render_template, abort, request, redirect, url_for
 from application import app
-from application.mongodb import posts_last_days, posts_date
+#from application.mongodb import posts_last_days, posts_date
+import application.mongodb as db
 import application.common as common
 
 from urllib.parse import urlparse
@@ -26,12 +27,12 @@ def index(year, month, day):
         if page != 0:
             abort(400)
         d = common.date_to_db(d)
-        posts = posts_date(d)
+        posts = db.posts_date(d)
         if not posts:
             abort(404)
         val['one_date'] = '%04d-%02d-%02d'%(year, month, day)
     else:
-        posts = posts_last_days(page=page, page_size=10)
+        posts = db.posts_last_days(page=page, page_size=10)
         if posts and page and page >= posts.get('pages', sys.maxsize):
             return redirect(url_for('.index'), code=302)
     days = []
@@ -53,3 +54,11 @@ def index(year, month, day):
     if posts.get('pages'):
         val['pagination'] = common.pagination_dict(page=page, pages=posts.get('pages'), center_side_count=2, url_prefix='/index.html')
     return render_template('index.html', **val)
+
+@app.route('/search', methods=['GET'])
+def search():
+    q = request.args.get('q')
+    q_object = common.split_query(q)
+    posts = db.posts_search(q_object)
+    print(posts)
+    return q

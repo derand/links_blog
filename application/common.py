@@ -1,4 +1,5 @@
 import datetime
+import shlex
 
 timezone='Europe/Kiev'
 
@@ -71,8 +72,45 @@ def pagination_dict(page, pages, center_side_count=2, url_prefix='/'):
         })
     return pagination
 
+def split_query(q):
+    '''
+        q — user query
+
+        Return dictionary:
+            {
+                'status': int
+                'q': [],
+                'tags': [],
+                'date': []
+            }
+    '''
+    try:
+        qs = shlex.split(q)
+    except ValueError as e:
+        try:
+            qs = shlex.split(q.replace('\'', ''))
+        except ValueError as e:
+            return { 'status': 400 }
+    rv = {
+        'status': 200,
+        'tags': [],
+        'date': [],
+        'q': []
+    }
+    for w in qs:
+        if w.lower().startswith('tag:'):
+            rv['tags'].append(w[len('tag:'):])
+        elif w.lower().startswith('date:'):
+            rv['date'].append(w[len('date:'):])
+        else:
+            rv['q'].append(w)
+    return rv
 
 if __name__ == "__main__":
     import json
-    p = pagination_dict(page=5, pages=12, center_side_count=2)
-    print(json.dumps(p, sort_keys=True, indent=4))
+
+    #p = pagination_dict(page=5, pages=12, center_side_count=2)
+    #print(json.dumps(p, sort_keys=True, indent=4))
+
+    qo = split_query('tag:"neural network" яндекс')
+    print(json.dumps(qo, sort_keys=True, indent=4))
