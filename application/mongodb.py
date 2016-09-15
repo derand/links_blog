@@ -112,7 +112,7 @@ def posts_search(q_object, page=0, page_size=50):
         }
         if page > 0 and page*page_size > count:
             return rv
-        cursor = mongo.db.links.find(query, skip=page*page_size, limit=page_size)
+        cursor = mongo.db.links.find(query, skip=page*page_size, limit=page_size, sort=[('day', DESCENDING), ])
         rv['posts'] = tuple(cursor)
     return rv    
 

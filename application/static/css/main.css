@@ -137,6 +137,14 @@ html, body {
     color: #000;
 }
 
+.date {
+    margin-right: 10px;
+    font-size: 80%;
+}
+.date a, .date a:visited, .date a:hover{
+    text-decoration: none;
+    color: #323232;
+}
 .tag {
 /*    font-family: Verdana, Arial, Helvetica, sans-serif;*/
     font-size: 12px;

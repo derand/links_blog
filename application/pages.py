@@ -8,6 +8,8 @@ from urllib.parse import urlparse
 import time
 import datetime
 import sys
+import copy
+from urllib.parse import quote
 
 @app.route('/', defaults={'year': None, 'month': None, 'day': None}, methods=['GET'])
 @app.route('/index.html', defaults={'year': None, 'month': None, 'day': None}, methods=['GET'])
@@ -57,8 +59,32 @@ def index(year, month, day):
 
 @app.route('/search', methods=['GET'])
 def search():
-    q = request.args.get('q')
+    q = request.args.get('q', '')
+    try:
+        page = int(request.args.get('p', 1)) - 1 
+    except ValueError:
+        page = 0
+    val = {}
     q_object = common.split_query(q)
-    posts = db.posts_search(q_object)
-    print(posts)
-    return q
+    if q_object.get('status', 200) != 200:
+        abort(q_object.get('status'))
+    posts = db.posts_search(q_object, page=page, page_size=50)
+    val['posts'] = list()
+    for p in posts.get('posts', tuple()):
+        tmp = copy.copy(p)
+        tmp.pop('_id', None)
+        if 'short_url' not in tmp:
+            parsed_uri = urlparse(tmp.get('url'))
+            tmp['short_url'] = '{uri.netloc}'.format(uri=parsed_uri)
+        tmp['link_date'] = common.db_day_to_linkdate(tmp.get('day'))
+        val['posts'].append(tmp)
+    if q:
+        val['q'] = q
+    val['count'] = posts.get('count', 0)
+    #print(val)
+    if posts.get('pages'):
+        url_prefix = '/search'
+        if q:
+            url_prefix += '?q=%s'%quote(q)
+        val['pagination'] = common.pagination_dict(page=page, pages=posts.get('pages'), center_side_count=2, url_prefix=url_prefix)
+    return render_template('search.html', **val)

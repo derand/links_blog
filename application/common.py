@@ -31,7 +31,8 @@ def pagination_dict(page, pages, center_side_count=2, url_prefix='/'):
             p['class'] = 'active'
         pagination.append(p)
     def url_for_page(page, url_prefix):
-        return url_prefix if page==0 else '%s?p=%d'%(url_prefix, page+1)
+        delimiter = '&' if '?' in url_prefix else '?'
+        return url_prefix if page==0 else '%s%sp=%d'%(url_prefix, delimiter, page+1)
 
     pagination = []
     if page==0:

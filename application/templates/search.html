@@ -1,0 +1,14 @@
+{% extends "layout.html" %}
+
+{% block content %}
+    <form method="get">
+        <div>
+            <input name="q"{% if q %} value="{{ q }}"{% endif %}>
+            <button type="submit">Search</button>
+        </div>
+    </form>
+    <article>
+    {% for p in posts %}{% include 'post.html' %}{% endfor %}
+    </article>
+    {% include 'pagination.html' %}
+{% endblock %}

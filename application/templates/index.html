@@ -29,7 +29,7 @@
     </form>
     <script type="text/javascript">$("#post_create").hide();</script>
     {% for day in days %}
-        {% include 'day.html' %}
+        {% if one_date %}<div class="day_title">{{ day.human_date }}</div>{% else %}<a href="/{{ day.link_date | urlencode }}.html" class="day_title">{{ day.human_date }}</a>{% endif %}<article>{% for p in day.posts %}{% include 'post.html' %}{% endfor %}</article>
     {% endfor %}
     {% include 'pagination.html' %}
 {% endblock %}
