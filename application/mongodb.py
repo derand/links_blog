@@ -7,8 +7,15 @@ import pytz
 from datetime import datetime, date
 import application.common as common
 
+
 app.config['MONGO_URI'] = os.environ.get('MONGODB_CONNECTION')
 mongo = PyMongo(app)
+
+@app.before_first_request
+def _run_on_start():
+    print(mongo.db)
+    if mongo.db:
+        mongo.db.links.create_index([('description', 'text'), ('url', 'text'), ('tags', 'text')])
 
 '''
 {
@@ -81,7 +88,19 @@ def posts_search(q_object, page=0, page_size=50):
                             "$eq": t
                         }
                     }})
+        if len(q_object.get('q')):
+            s = ''
+            for q in q_object.get('q'):
+                if ' ' in q or '\t' in q:
+                    s = '%s "%s"'%(s, q)
+                else:
+                    s = '%s %s'%(s, q)
+            and_query.append({ 
+                "$text": {
+                    "$search": s
+                }})
         query = {} if len(and_query)==0 else and_query[0] if len(and_query)==1 else { "$and": and_query }
+        #print(query)
         cursor = mongo.db.links.find(query)
         count = cursor.count()
         pages = count // page_size
