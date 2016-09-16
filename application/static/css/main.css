@@ -137,6 +137,14 @@ html, body {
     color: #000;
 }
 
+.date {
+    margin-right: 10px;
+    font-size: 80%;
+}
+.date a, .date a:visited, .date a:hover{
+    text-decoration: none;
+    color: #323232;
+}
 .tag {
 /*    font-family: Verdana, Arial, Helvetica, sans-serif;*/
     font-size: 12px;
@@ -260,5 +268,29 @@ ul.pagination li a:hover:not(.active) {
     background-color: #ddd;
 }
 ul.pagination li span.disabled {
-    color: gray;
+    color: #808080;
+}
+
+.search_form {
+    margin: 1em;
+}
+.search_form_div {
+    display: flex;
+}
+.search_form_div input {
+    font-size: 100%;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
+    border: 1px solid #999;
+    width: 100%;
+    padding: 5px;
+}
+.search_form_div button {
+    min-width: 50px;
+}
+.search_form_results {
+    font-size: 70%;
+    width: 100%;
+    /* text-align: center; */
+    color: #808080;
 }

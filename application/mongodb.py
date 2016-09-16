@@ -7,8 +7,15 @@ import pytz
 from datetime import datetime, date
 import application.common as common
 
+
 app.config['MONGO_URI'] = os.environ.get('MONGODB_CONNECTION')
 mongo = PyMongo(app)
+
+@app.before_first_request
+def _run_on_start():
+    print(mongo.db)
+    if mongo.db:
+        mongo.db.links.create_index([('description', 'text'), ('url', 'text'), ('tags', 'text')])
 
 '''
 {
@@ -66,6 +73,48 @@ def posts_date(db_day):
         }
     return rv
 
+def posts_search(q_object, page=0, page_size=50):
+    '''
+        q_object - query object (dict) from string splitted by common.split_query
+    '''
+    rv = None
+    if mongo.db:
+        and_query = []
+        if len(q_object.get('tags')):
+            for t in q_object.get('tags'):
+                and_query.append({ 
+                    "tags": {
+                        "$elemMatch": {
+                            "$eq": t
+                        }
+                    }})
+        if len(q_object.get('q')):
+            s = ''
+            for q in q_object.get('q'):
+                if ' ' in q or '\t' in q:
+                    s = '%s "%s"'%(s, q)
+                else:
+                    s = '%s %s'%(s, q)
+            and_query.append({ 
+                "$text": {
+                    "$search": s
+                }})
+        query = {} if len(and_query)==0 else and_query[0] if len(and_query)==1 else { "$and": and_query }
+        #print(query)
+        cursor = mongo.db.links.find(query)
+        count = cursor.count()
+        pages = count // page_size
+        if count % page_size:
+            pages += 1
+        rv = {
+            'pages': pages,
+            'count': count,
+        }
+        if page > 0 and page*page_size > count:
+            return rv
+        cursor = mongo.db.links.find(query, skip=page*page_size, limit=page_size, sort=[('day', DESCENDING), ])
+        rv['posts'] = tuple(cursor)
+    return rv    
 
 def post_create(url=None, description=None, tags=[], day=None):
     post = None
