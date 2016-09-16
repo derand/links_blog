@@ -22,18 +22,24 @@
             right: 0;
         }
         .search_form_h_label {
-            position: absolute;
+            /* position: absolute; */
             font-size: 0;
             color: rgba(0, 0, 0, 0);
             text-indent: -9999px;
-            background: url(/static/imgs/search-icon.png);
-            width: 24px;
-            height: 24px;
+            background: url({{ url_for('static', filename='imgs/search-icon.png') }});
+            width: 18px;
+            height: 18px;
             display: block;
             background-size: 100% 100%;
             background-repeat: no-repeat;
-            margin-top: 8px;
+        }
+        #search_form_h_a {
+            /* background-color: #ddd; */
+            padding: 5px;
+            position: absolute;
+            margin-top: 6px;
             margin-left: -30px;
+            border-radius: 5px;
         }
     </style>
     <script type="text/javascript">
@@ -43,10 +49,18 @@
 
             a.removeAttr("href");
             a.click(function(){
+                a.css("background-color", "rgba(0, 0, 0, 0)");
                 i.animate({ width: 'toggle' }, 300, function(){
                     i.focus();
                 });
                 event.preventDefault();
+            });
+            a.hover(function() {
+                if (!i.is(":visible")) {
+                    a.css("background-color", "#ddd");
+                }
+            }, function() {
+                a.css("background-color", "rgba(0, 0, 0, 0)");
             });
         });
     </script>
