@@ -59,16 +59,19 @@ def index(year, month, day):
 
 @app.route('/search', methods=['GET'])
 def search():
-    q = request.args.get('q', '')
+    q = request.args.get('q')
     try:
         page = int(request.args.get('p', 1)) - 1 
     except ValueError:
         page = 0
     val = {}
-    q_object = common.split_query(q)
-    if q_object.get('status', 200) != 200:
-        abort(q_object.get('status'))
-    posts = db.posts_search(q_object, page=page, page_size=50)
+    posts = {}
+    if q is not None:
+        q_object = common.split_query(q)
+        if q_object.get('status', 200) != 200:
+            abort(q_object.get('status'))
+        posts = db.posts_search(q_object, page=page, page_size=50)
+
     val['posts'] = list()
     for p in posts.get('posts', tuple()):
         tmp = copy.copy(p)
@@ -80,7 +83,8 @@ def search():
         val['posts'].append(tmp)
     if q:
         val['q'] = q
-    val['count'] = posts.get('count', 0)
+    if posts.get('count') is not None:
+        val['search_count'] = posts.get('count')
     #print(val)
     if posts.get('pages'):
         url_prefix = '/search'

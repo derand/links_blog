@@ -1,8 +1,59 @@
 {% extends "layout.html" %}
 
-{% block javascript %}
+{% block head_content %}
     <script src="//code.jquery.com/jquery-3.1.0.min.js" integrity="sha256-cCueBR6CsyA4/9szpPfrX3s49M9vUU5BgtiJj06wt/s=" crossorigin="anonymous"></script>
     <script src="{{ url_for('static', filename='js/main.js') }}" type="text/javascript"></script>
+    <style type="text/css">
+        .search_form_h {
+            float: right;
+            font-size: 13pt;
+        }
+        .search_form_h_input {
+            position: absolute;
+            font-size: 100%;
+            -moz-box-sizing: border-box;
+            box-sizing: border-box;
+            border: 1px solid #999;
+            width: 280px;
+            padding: 5px;
+            margin-left: -280px;
+            margin-top: 3px;
+            display: none;
+            right: 0;
+        }
+        .search_form_h_label {
+            position: absolute;
+            font-size: 0;
+            color: rgba(0, 0, 0, 0);
+            text-indent: -9999px;
+            background: url(/static/imgs/search-icon.png);
+            width: 24px;
+            height: 24px;
+            display: block;
+            background-size: 100% 100%;
+            background-repeat: no-repeat;
+            margin-top: 8px;
+            margin-left: -30px;
+        }
+    </style>
+    <script type="text/javascript">
+        $(function(){
+            var a = $('#search_form_h_a'),
+                i = $('.search_form_h_input');
+
+            a.removeAttr("href");
+            a.click(function(){
+                i.animate({ width: 'toggle' }, 300, function(){
+                    i.focus();
+                });
+                event.preventDefault();
+            });
+        });
+    </script>
+{% endblock %}
+
+{% block header_extend %}
+                <form action="/search" method="GET" class="search_form_h"><input type="input" name="q" class="search_form_h_input"><a href="/search" id="search_form_h_a"><label class="search_form_h_label">search</label></a></form>
 {% endblock %}
 
 {% block content %}

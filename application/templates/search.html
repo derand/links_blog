@@ -1,11 +1,14 @@
 {% extends "layout.html" %}
 
 {% block content %}
-    <form method="get">
-        <div>
+    <form class="search_form" method="get">
+        <div class="search_form_div">
             <input name="q"{% if q %} value="{{ q }}"{% endif %}>
             <button type="submit">Search</button>
         </div>
+{% if search_count %}
+        <div class="search_form_results">Search results: {{ search_count }}</div>
+{% endif %}
     </form>
     <article>
     {% for p in posts %}{% include 'post.html' %}{% endfor %}
