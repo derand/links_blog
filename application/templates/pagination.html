@@ -1,0 +1,1 @@
+{% if pagination %}<ul class="pagination">{% for p in pagination %}<li>{% if p.url %}<a href="{{ p.url }}"{% if p.class %} class="{{ p.class }}"{% endif %}>{{ p.title }}</a>{% else %}<span {% if p.class %} class="{{ p.class }}"{% endif %}>{{ p.title }}</span>{% endif %}</li>{% endfor %}</ul>{% endif %}
