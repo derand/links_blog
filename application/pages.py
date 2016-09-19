@@ -1,4 +1,4 @@
-from flask import render_template, abort, request, redirect, url_for
+from flask import render_template, abort, request, redirect, url_for, session
 from application import app
 #from application.mongodb import posts_last_days, posts_date
 import application.mongodb as db
@@ -10,6 +10,10 @@ import datetime
 import sys
 import copy
 from urllib.parse import quote
+from oauth2client import client
+from apiclient import discovery
+import os
+import httplib2
 
 @app.route('/', defaults={'year': None, 'month': None, 'day': None}, methods=['GET'])
 @app.route('/index.html', defaults={'year': None, 'month': None, 'day': None}, methods=['GET'])
@@ -92,3 +96,53 @@ def search():
             url_prefix += '?q=%s'%quote(q)
         val['pagination'] = common.pagination_dict(page=page, pages=posts.get('pages'), center_side_count=2, url_prefix=url_prefix)
     return render_template('search.html', **val)
+
+@app.route('/login')
+def login():
+    if 'credentials' not in session:
+        return redirect(url_for('oauth2callback'))
+    credentials = client.OAuth2Credentials.from_json(session['credentials'])
+    if credentials is None or credentials.invalid:
+        print('credentials.invalid')
+        return redirect(url_for('oauth2callback'))
+    if credentials.access_token_expired:
+        print('access_token_expired')
+        try:
+            credentials.refresh(httplib2.Http())
+        except oauth2client.client.HttpAccessTokenRefreshError:
+            print('error')
+            return redirect(url_for('oauth2callback'))
+        session['credentials'] = credentials.to_json()
+        print('credentials:', credentials.to_json())
+    http_auth = credentials.authorize(httplib2.Http())
+    user_info_service = discovery.build(
+        serviceName='oauth2', version='v2',
+        http=http_auth)
+    user_info = None
+    try:
+        user_info = user_info_service.userinfo().get().execute()
+    except errors.HttpError as e:
+        logging.error('An error occurred: %s', e)
+    print(user_info)
+    return 'OK'
+
+@app.route('/oauth2callback')
+def oauth2callback():
+    constructor_kwargs = {
+                'redirect_uri': url_for('oauth2callback', _external=True),
+                'auth_uri': 'https://accounts.google.com/o/oauth2/auth',
+                'token_uri': 'https://accounts.google.com/o/oauth2/token',
+                'login_hint': None,
+                'prompt': 'consent',
+            }
+    flow = client.OAuth2WebServerFlow(os.environ.get('GOOGLE_CLIENT_ID'), os.environ.get('GOOGLE_CLIENT_SECRET'), 'email', **constructor_kwargs)
+    if 'code' not in request.args:
+        auth_uri = flow.step1_get_authorize_url()
+        return redirect(auth_uri)
+    else:
+        auth_code = request.args.get('code')
+        credentials = flow.step2_exchange(auth_code)
+        session['credentials'] = credentials.to_json()
+        print('credentials:', credentials.to_json())
+        return redirect(url_for('index'))
+

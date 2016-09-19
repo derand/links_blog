@@ -1,7 +1,9 @@
 from flask import Flask
+import os
 
 app = Flask(__name__)
 #app.config['DEBUG'] = True
+app.secret_key = os.environ.get('FLASK_SECRET')
 
 #from application import urls
 from application import pages

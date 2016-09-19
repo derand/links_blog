@@ -107,6 +107,7 @@ def split_query(q):
             rv['q'].append(w)
     return rv
 
+
 if __name__ == "__main__":
     import json
 

@@ -2,8 +2,7 @@ from application import app
 from flask_pymongo import PyMongo
 from pymongo import DESCENDING, ASCENDING
 import os
-import time
-import pytz
+import time, pytz
 from datetime import datetime, date
 import application.common as common
 
