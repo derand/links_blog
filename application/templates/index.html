@@ -3,46 +3,6 @@
 {% block head_content %}
     <script src="//code.jquery.com/jquery-3.1.0.min.js" integrity="sha256-cCueBR6CsyA4/9szpPfrX3s49M9vUU5BgtiJj06wt/s=" crossorigin="anonymous"></script>
     <script src="{{ url_for('static', filename='js/main.js') }}" type="text/javascript"></script>
-    <style type="text/css">
-        .search_form_h {
-            float: right;
-            font-size: 13pt;
-            margin-right: 27px;
-        }
-        .search_form_h_input {
-            position: absolute;
-            font-size: 100%;
-            -moz-box-sizing: border-box;
-            box-sizing: border-box;
-            border: 1px solid #999;
-            width: 280px;
-            padding: 5px;
-            margin-left: -280px;
-            margin-top: 3px;
-            display: none;
-            right: 30px;
-        }
-        .search_form_h_label {
-            /* position: absolute; */
-            font-size: 0;
-            color: rgba(0, 0, 0, 0);
-            text-indent: -9999px;
-            background: url({{ url_for('static', filename='imgs/search-icon.png') }});
-            width: 18px;
-            height: 18px;
-            display: block;
-            background-size: 100% 100%;
-            background-repeat: no-repeat;
-        }
-        #search_form_h_a {
-            /* background-color: #ddd; */
-            padding: 5px;
-            position: absolute;
-            margin-top: 6px;
-            margin-left: -30px;
-            border-radius: 5px;
-        }
-    </style>
     <script type="text/javascript">
         $(function(){
             var a = $('#search_form_h_a'),
@@ -68,7 +28,7 @@
 {% endblock %}
 
 {% block header_extend %}
-                <form action="/search" method="GET" class="search_form_h"><input type="input" name="q" class="search_form_h_input"><a href="/search" id="search_form_h_a"><label class="search_form_h_label">search</label></a></form>
+                <form action="/search" method="GET" class="search_form_h"><input type="input" name="q" class="search_form_h_input"><a href="/search" id="search_form_h_a"><label class="search_form_h_label" style="background-image: url({{ url_for('static', filename='imgs/search-icon.png') }})">search</label></a></form>
 {% endblock %}
 
 {% block content %}

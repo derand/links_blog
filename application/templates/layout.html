@@ -4,11 +4,6 @@
     <meta charset="UTF-8">
     <title>Links blog{% if title %} - {{ title }}{% endif %}</title>
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/main.css') }}">
-    <style type="text/css">
-        span.login_out {
-            background-image: url({% if is_loggedin %}{{ url_for('static', filename='imgs/logout.png') }}{% else %}{{ url_for('static', filename='imgs/login.png') }}{% endif %});
-        }
-    </style>
 {% block head_content %}{% endblock %}
 </head>
 <body>
@@ -19,7 +14,7 @@
                 <!-- Logo -->
                 <a href="/"><!--div id="logo">Logo</div--> Links blog</a>
 {% block header_extend %}{% endblock %}
-                <a href="/{% if is_loggedin %}logout{% else%}login{% endif %}" class="login_out"><span class="login_out"></span></a>
+                <a href="/{% if is_loggedin %}logout{% else%}login{% endif %}" class="login_out"><span class="login_out" style="background-image: url({% if is_loggedin %}{{ url_for('static', filename='imgs/logout.png') }}{% else %}{{ url_for('static', filename='imgs/login.png') }}{% endif %})"></span></a>
             </header>
         </div>
         <!-- Content -->

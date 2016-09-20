@@ -27,6 +27,7 @@ body {
   background: linear-gradient(top, rgba(0, 0, 0, 0.12), rgba(0, 0, 0, 0));
   background-position: top left, top left;
   background-repeat: repeat-x, repeat;
+  margin-bottom: 10px;
 }
 #header {
   position: relative;
@@ -295,6 +296,44 @@ ul.pagination li span.disabled {
     color: #808080;
 }
 
+
+.search_form_h {
+    float: right;
+    font-size: 13pt;
+    margin-right: 27px; /* set to "0" if login button hidden */
+}
+.search_form_h_input {
+    position: absolute;
+    font-size: 100%;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
+    border: 1px solid #999;
+    width: 280px;
+    padding: 5px;
+    margin-left: -280px;
+    margin-top: 3px;
+    display: none;
+    right: 30px; /* set to "0" if login button hidden */
+}
+.search_form_h_label {
+    /* position: absolute; */
+    font-size: 0;
+    color: rgba(0, 0, 0, 0);
+    text-indent: -9999px;
+    width: 18px;
+    height: 18px;
+    display: block;
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+}
+#search_form_h_a {
+    /* background-color: #ddd; */
+    padding: 5px;
+    position: absolute;
+    margin-top: 6px;
+    margin-left: -30px;
+    border-radius: 5px;
+}
 
 a.login_out {
     float: right;
