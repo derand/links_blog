@@ -294,3 +294,22 @@ ul.pagination li span.disabled {
     /* text-align: center; */
     color: #808080;
 }
+
+
+a.login_out {
+    float: right;
+    padding: 5px;
+    margin-top: 6px;
+    border-radius: 5px;
+    background-color: rgba(0, 0, 0, 0);
+}
+a.login_out:hover {
+    background-color: #ddd;
+}
+span.login_out {
+    width: 18px;
+    height: 18px;
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    display: block;
+}

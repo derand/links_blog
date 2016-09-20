@@ -22,6 +22,7 @@ import httplib2
 @app.route('/<int:year>-<int:month>-<int:day>.html', methods=['GET'])
 def index(year, month, day):
     #print(request.url, request.base_url)
+    isloggedin = True if api.is_loggedin(request) else False
     val = {}
     try:
         page = int(request.args.get('p', 1)) - 1 
@@ -61,6 +62,7 @@ def index(year, month, day):
     val['days'] = days
     if posts.get('pages'):
         val['pagination'] = common.pagination_dict(page=page, pages=posts.get('pages'), center_side_count=2, url_prefix='/index.html')
+    val['is_loggedin'] = isloggedin
     return render_template('index.html', **val)
 
 @app.route('/search', methods=['GET'])

@@ -7,6 +7,7 @@
         .search_form_h {
             float: right;
             font-size: 13pt;
+            margin-right: 27px;
         }
         .search_form_h_input {
             position: absolute;
@@ -19,7 +20,7 @@
             margin-left: -280px;
             margin-top: 3px;
             display: none;
-            right: 0;
+            right: 30px;
         }
         .search_form_h_label {
             /* position: absolute; */
@@ -71,6 +72,7 @@
 {% endblock %}
 
 {% block content %}
+{% if is_loggedin %}
     <div id="togglePostFormLink">[<a href="#">Show/Hide Add new link form</a>]</div>
     <!-- https://developer.mozilla.org/en-US/docs/Web/Guide/HTML/Forms/My_first_HTML_form -->
     <form id="post_create" method="post">
@@ -93,6 +95,7 @@
         </div>
     </form>
     <script type="text/javascript">$("#post_create").hide();</script>
+{% endif %}
     {% for day in days %}
         {% if one_date %}<div class="day_title">{{ day.human_date }}</div>{% else %}<a href="/{{ day.link_date | urlencode }}.html" class="day_title">{{ day.human_date }}</a>{% endif %}<article>{% for p in day.posts %}{% include 'post.html' %}{% endfor %}</article>
     {% endfor %}
