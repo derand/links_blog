@@ -172,6 +172,10 @@ def oauth2callback():
         print(user_info)
 
         access = db.has_user_access(credentials.to_json(), user_info)
+
+        # revoke access
+        credentials.revoke(httplib2.Http())
+
         if access:
             md5_hash = api.secret_hash(request)
             session.permanent = True
@@ -180,8 +184,7 @@ def oauth2callback():
             session['__sidt'] = int(time.time())
             if access is not True:
                 session['__s'] = access
-
-        # revoke access
-        credentials.revoke(httplib2.Http())
+        else:
+            return 'You don\'t have permissions on this site.' 
 
         return redirect(url_for('index'))
