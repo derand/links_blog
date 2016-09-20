@@ -2,8 +2,7 @@ from application import app
 from flask_pymongo import PyMongo
 from pymongo import DESCENDING, ASCENDING
 import os
-import time
-import pytz
+import time, pytz
 from datetime import datetime, date
 import application.common as common
 
@@ -149,8 +148,10 @@ def post_create(url=None, description=None, tags=[], day=None):
     print(dt.strftime('%Y-%m-%d %H:%M:%S %Z%z'))
     return dt.strftime('%Y-%m-%d %H:%M:%S %Z%z')
 
-# day of year to date
-#  datetime.datetime(year, 1, 1) + datetime.timedelta(days - 1)
-# alternative
-#  datetime.datetime.strptime('2010 120', '%Y %j')
-#  _.strftime('%d/%m/%Y')
+def has_user_access(credentials_str, user_info):
+    return user_info.get('verified_email') and user_info.get('email') == os.environ.get('GOOGLE_USER_EMAIL')
+    '''
+    if mongo.db:
+        pass
+    return False
+    '''
