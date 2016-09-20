@@ -1,7 +1,7 @@
 from application import app
 from flask import request, Response, session
 
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 #import pytz, time
 import json
 from application.mongodb import post_create
@@ -22,26 +22,36 @@ def get_remote_ip(request):
         remote_ip = request.headers.getlist("X-Forwarded-For")[0]
     return remote_ip
 
-def is_logged(request):
-    if '__sid' not in session:
-        return False
-    tm = int(time.time())
-    if '__exp' in session: 
-        pass
+def secret_hash(request):
     ip = get_remote_ip(request)
     user_agent = request.headers.get('User-Agent')
     secret = '%s%s%s'%(user_agent, ip, os.environ.get('GOOGLE_CLIENT_ID'))
-    m = hashlib.md5(secret.encode('utf-8'))
-    if m.hexdigest() == session.get('__sid'):
-        session['__exp'] = tm + 3*60*60*24
+    return hashlib.md5(secret.encode('utf-8')).hexdigest()
+
+def is_loggedin(request):
+    if '__sid' not in session:
+        return False
+    tm = int(time.time())
+    md5_hash = secret_hash(request)
+    if md5_hash == session.get('__sid'):
+        if '__sidt' not in session or abs(session.get('__sidt')-tm) > 60*60*24:
+            session.permanent = True
+            app.permanent_session_lifetime = timedelta(days=3)
+            session['__sidt'] = tm
+            session['__sid'] = md5_hash
+            if '__s' in session:
+                session['__s'] = session['__s']
         return True
+    if '__sid' in session:  del session['__sid']
+    if '__sidt' in session: del session['__sidt']
+    if '__s' in session: del session['__s']
     return False
 
 
 @app.route('/api/post_create', methods=['POST'])
 def api_post_create():
     prms = request.form
-    if not is_logged(request):
+    if not is_loggedin(request):
         return json_response({ "status": 401, 'message': 'Unauthorized' })
     url = prms.get('url')
     description = prms.get('description')

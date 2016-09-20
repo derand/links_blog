@@ -1,8 +1,9 @@
-from flask import render_template, abort, request, redirect, url_for, session
+from flask import render_template, abort, request, redirect, url_for, session, make_response
 from application import app
 #from application.mongodb import posts_last_days, posts_date
 import application.mongodb as db
 import application.common as common
+import application.api as api
 
 from urllib.parse import urlparse
 import time
@@ -14,6 +15,7 @@ from oauth2client import client
 from apiclient import discovery
 import os
 import httplib2
+
 
 @app.route('/', defaults={'year': None, 'month': None, 'day': None}, methods=['GET'])
 @app.route('/index.html', defaults={'year': None, 'month': None, 'day': None}, methods=['GET'])
@@ -99,6 +101,10 @@ def search():
 
 @app.route('/login')
 def login():
+    if api.is_loggedin(request):
+        return 'You is Logged In.'
+    return redirect(url_for('oauth2callback'))
+    '''
     if 'credentials' not in session:
         return redirect(url_for('oauth2callback'))
     credentials = client.OAuth2Credentials.from_json(session['credentials'])
@@ -125,6 +131,14 @@ def login():
         logging.error('An error occurred: %s', e)
     print(user_info)
     return 'OK'
+    '''
+
+@app.route('/logout')
+def logout():
+    if '__sid' in session:  del session['__sid']
+    if '__sidt' in session: del session['__sidt']
+    if '__s' in session: del session['__s']
+    return redirect(url_for('index'))
 
 @app.route('/oauth2callback')
 def oauth2callback():
@@ -142,7 +156,30 @@ def oauth2callback():
     else:
         auth_code = request.args.get('code')
         credentials = flow.step2_exchange(auth_code)
-        session['credentials'] = credentials.to_json()
+        #session['credentials'] = credentials.to_json()
         print('credentials:', credentials.to_json())
-        return redirect(url_for('index'))
+        http_auth = credentials.authorize(httplib2.Http())
+        user_info_service = discovery.build(
+            serviceName='oauth2', version='v2',
+            http=http_auth)
+        user_info = None
+        try:
+            user_info = user_info_service.userinfo().get().execute()
+        except errors.HttpError as e:
+            logging.error('An error occurred: %s', e)
+        print(user_info)
 
+        access = db.has_user_access(credentials.to_json(), user_info)
+        if access:
+            md5_hash = api.secret_hash(request)
+            session.permanent = True
+            app.permanent_session_lifetime = datetime.timedelta(days=3)
+            session['__sid'] = md5_hash
+            session['__sidt'] = int(time.time())
+            if access is not True:
+                session['__s'] = access
+
+        # revoke access
+        credentials.revoke(httplib2.Http())
+
+        return redirect(url_for('index'))
