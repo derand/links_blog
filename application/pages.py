@@ -36,12 +36,12 @@ def index(year, month, day):
         if page != 0:
             abort(400)
         d = common.date_to_db(d)
-        posts = db.posts_date(d)
+        posts = db.posts_date(d, get_hidden=isloggedin)
         if not posts:
             abort(404)
         val['one_date'] = '%04d-%02d-%02d'%(year, month, day)
     else:
-        posts = db.posts_last_days(page=page, page_size=10)
+        posts = db.posts_last_days(page=page, page_size=10, get_hidden=isloggedin)
         if posts and page and page >= posts.get('pages', sys.maxsize):
             return redirect(url_for('.index'), code=302)
     days = []
@@ -79,7 +79,7 @@ def search():
         q_object = common.split_query(q)
         if q_object.get('status', 200) != 200:
             abort(q_object.get('status'))
-        posts = db.posts_search(q_object, page=page, page_size=50)
+        posts = db.posts_search(q_object, page=page, page_size=50, get_hidden=isloggedin)
 
     val['posts'] = list()
     for p in posts.get('posts', tuple()):

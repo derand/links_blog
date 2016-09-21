@@ -57,7 +57,8 @@ def api_post_create():
     description = prms.get('description')
     d = prms.get('date')
     tags = prms.getlist('tag')
-    print('url=%s description=%s date=%s tags=%s'%(url, description, d, tags))
+    hidden = prms.get('hidden')
+    print('url=%s description=%s date=%s tags=%s hidden=%s'%(url, description, d, tags, hidden))
     if not url or not description:
         return json_response({ "status": 400, 'message': 'All params does not setted' })
     if d:
@@ -66,7 +67,7 @@ def api_post_create():
     else:
         day = None
 
-    post = post_create(url=url, description=description, tags=tags, day=day)
+    post = post_create(url=url, description=description, tags=tags, day=day, hidden=hidden)
     if post:
         post.pop('_id', None)
         rv = {
