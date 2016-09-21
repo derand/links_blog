@@ -147,17 +147,10 @@ def post_create(url=None, description=None, tags=[], day=None, hidden=False):
         mongo.db.links.insert(post)
     return post
 
-    # get time in UTC
-    utc_dt = datetime.utcfromtimestamp(timestamp).replace(tzinfo=pytz.utc)
-    print(utc_dt)
-
-    # convert it to tz
-    tz = pytz.timezone('Europe/Kiev')
-    dt = utc_dt.astimezone(tz)
-
-    # print it
-    print(dt.strftime('%Y-%m-%d %H:%M:%S %Z%z'))
-    return dt.strftime('%Y-%m-%d %H:%M:%S %Z%z')
+def url_exists(url):
+    if mongo.db:
+        return mongo.db.links.find_one({ 'url': url })
+    return False
 
 def has_user_access(credentials_str, user_info):
     return user_info.get('verified_email') and user_info.get('email') == os.environ.get('GOOGLE_USER_EMAIL')

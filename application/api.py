@@ -4,7 +4,7 @@ from flask import request, Response, session
 from datetime import datetime, date, timedelta
 #import pytz, time
 import json
-from application.mongodb import post_create
+import application.mongodb as db
 import application.common as common
 import os
 import hashlib
@@ -61,13 +61,17 @@ def api_post_create():
     print('url=%s description=%s date=%s tags=%s hidden=%s'%(url, description, d, tags, hidden))
     if not url or not description:
         return json_response({ "status": 400, 'message': 'All params does not setted' })
+    post = db.url_exists(url)
+    if post:
+        post.pop('_id', None)
+        return json_response({ "status": 409, 'message': 'Duplicate url', 'post': post })
     if d:
         day = datetime.strptime(d, "%Y-%m-%d").date()
         day = common.date_to_db(day)
     else:
         day = None
 
-    post = post_create(url=url, description=description, tags=tags, day=day, hidden=hidden)
+    post = db.post_create(url=url, description=description, tags=tags, day=day, hidden=hidden)
     if post:
         post.pop('_id', None)
         rv = {
