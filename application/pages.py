@@ -67,6 +67,7 @@ def index(year, month, day):
 
 @app.route('/search', methods=['GET'])
 def search():
+    isloggedin = True if api.is_loggedin(request) else False
     q = request.args.get('q')
     try:
         page = int(request.args.get('p', 1)) - 1 
@@ -99,6 +100,7 @@ def search():
         if q:
             url_prefix += '?q=%s'%quote(q)
         val['pagination'] = common.pagination_dict(page=page, pages=posts.get('pages'), center_side_count=2, url_prefix=url_prefix)
+    val['is_loggedin'] = isloggedin
     return render_template('search.html', **val)
 
 @app.route('/login')
