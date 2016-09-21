@@ -199,12 +199,19 @@ a.day_title, a.day_title:visited, a.day_title:hover {
     font-size: 100%;
 
     /* To give the same size to all text field */
-    width: 290px;
+/*    width: 290px; */
     -moz-box-sizing: border-box;
     box-sizing: border-box;
 
     /* To harmonize the look & feel of text field border */
     border: 1px solid #999;
+}
+#post_create input:not([type=checkbox]) {
+    width: 290px;
+}
+#post_create input[type="checkbox"]
+{
+/*    vertical-align:middle;*/
 }
 #post_create input:focus, textarea:focus {
     /* To give a little highlight on active elements */
@@ -356,3 +363,4 @@ span.login_out {
 .hidden {
     color: #909090;
 }
+

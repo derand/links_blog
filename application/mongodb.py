@@ -124,7 +124,7 @@ def posts_search(q_object, page=0, page_size=50, get_hidden=False):
         rv['posts'] = tuple(cursor)
     return rv    
 
-def post_create(url=None, description=None, tags=[], day=None):
+def post_create(url=None, description=None, tags=[], day=None, hidden=False):
     post = None
     if mongo.db:
         tm = int(time.time())
@@ -142,6 +142,8 @@ def post_create(url=None, description=None, tags=[], day=None):
             post['day'] = day
         if tags:
             post['tags'] = tags
+        if hidden:
+            post['hidden'] = True
         mongo.db.links.insert(post)
     return post
 
