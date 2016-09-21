@@ -352,3 +352,7 @@ span.login_out {
     background-repeat: no-repeat;
     display: block;
 }
+
+.hidden {
+    color: #909090;
+}

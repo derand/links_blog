@@ -34,7 +34,7 @@ def _run_on_start():
 }
 '''
 
-def posts_last_days(page=0, page_size=10):
+def posts_last_days(page=0, page_size=10, get_hidden=False):
     rv = None
     if mongo.db:
         arr = mongo.db.links.distinct('day')
@@ -51,6 +51,8 @@ def posts_last_days(page=0, page_size=10):
         query = {
             'day': { "$in": days },
         }
+        if not get_hidden:
+            query['$or'] = [ { "hidden": { "$exists": False } }, { "hidden": False } ]
         cursor = mongo.db.links.find(query, sort=[('day', DESCENDING), ('created', ASCENDING)])
         rv = {
             'posts': tuple(cursor),
@@ -59,12 +61,14 @@ def posts_last_days(page=0, page_size=10):
         }
     return rv
 
-def posts_date(db_day):
+def posts_date(db_day, get_hidden=False):
     rv = None
     if mongo.db:
         query = {
             'day': db_day,
         }
+        if not get_hidden:
+            query['$or'] = [ { "hidden": { "$exists": False } }, { "hidden": False } ]
         cursor = mongo.db.links.find(query, sort=[('day', DESCENDING), ('created', ASCENDING)])
         rv = {
             'posts': tuple(cursor),
@@ -72,7 +76,7 @@ def posts_date(db_day):
         }
     return rv
 
-def posts_search(q_object, page=0, page_size=50):
+def posts_search(q_object, page=0, page_size=50, get_hidden=False):
     '''
         q_object - query object (dict) from string splitted by common.split_query
     '''
@@ -99,6 +103,11 @@ def posts_search(q_object, page=0, page_size=50):
                     "$search": s
                 }})
         query = {} if len(and_query)==0 else and_query[0] if len(and_query)==1 else { "$and": and_query }
+        if not get_hidden:
+            if '$or' in query:
+                query['$or'].append([ { "hidden": { "$exists": False } }, { "hidden": False } ])
+            else:
+                query['$or'] = [ { "hidden": { "$exists": False } }, { "hidden": False } ]
         #print(query)
         cursor = mongo.db.links.find(query)
         count = cursor.count()
