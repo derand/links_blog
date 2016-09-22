@@ -227,6 +227,7 @@ a.day_title, a.day_title:visited, a.day_title:hover {
     /* To allow users to resize any textarea vertically
        It does not work on all browsers */
     resize: vertical;
+    width: 290px;
 }
 #post_create .form_button {
     /* To position the buttons to the same position of the text fields */
