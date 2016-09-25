@@ -63,6 +63,7 @@ def index(year, month, day):
     if posts.get('pages'):
         val['pagination'] = common.pagination_dict(page=page, pages=posts.get('pages'), center_side_count=2, url_prefix='/index.html')
     val['is_loggedin'] = isloggedin
+    val['redirect_url'] = request.base_url
     return render_template('index.html', **val)
 
 @app.route('/search', methods=['GET'])
@@ -102,6 +103,19 @@ def search():
         val['pagination'] = common.pagination_dict(page=page, pages=posts.get('pages'), center_side_count=2, url_prefix=url_prefix)
     val['is_loggedin'] = isloggedin
     return render_template('search.html', **val)
+
+@app.route('/post', methods=['POST'])
+def post():
+    if not api.is_loggedin(request):
+        return abort(401)
+    prms = request.form
+    rv = api.post_create(url=prms.get('url'), description=prms.get('description'), d=prms.get('date'), tags=prms.getlist('tag'), hidden=prms.get('hidden'))
+    if rv.get('status', 200) != 200:
+        return abort(rv.get('status'))
+    if prms.get('redirect_url') and api.is_safe_url(request, prms.get('redirect_url')):
+        return redirect(prms.get('redirect_url'))
+    return redirect(url_for('index'))
+
 
 @app.route('/login')
 def login():

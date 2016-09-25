@@ -47,24 +47,14 @@ def is_loggedin(request):
     if '__s' in session: del session['__s']
     return False
 
-
-@app.route('/api/post_create', methods=['POST'])
-def api_post_create():
-    prms = request.form
-    if not is_loggedin(request):
-        return json_response({ "status": 401, 'message': 'Unauthorized' })
-    url = prms.get('url')
-    description = prms.get('description')
-    d = prms.get('date')
-    tags = prms.getlist('tag')
-    hidden = prms.get('hidden')
+def post_create(url, description=None, d=None, tags=tuple(), hidden=False):
     print('url=%s description=%s date=%s tags=%s hidden=%s'%(url, description, d, tags, hidden))
     if not url or not description:
-        return json_response({ "status": 400, 'message': 'All params does not setted' })
+        return { "status": 400, 'message': 'All params does not setted' }
     post = db.url_exists(url)
     if post:
         post.pop('_id', None)
-        return json_response({ "status": 409, 'message': 'Duplicate url', 'post': post })
+        return { "status": 409, 'message': 'Duplicate url', 'post': post }
     if d:
         day = datetime.strptime(d, "%Y-%m-%d").date()
         day = common.date_to_db(day)
@@ -82,4 +72,18 @@ def api_post_create():
         rv = {
             'status': 500,
         }
+    return rv
+
+def is_safe_url(request, target):
+    ref_url = urlparse(request.host_url)
+    test_url = urlparse(urljoin(request.host_url, target))
+    return test_url.scheme in ('http', 'https') and \
+           ref_url.netloc == test_url.netloc
+
+@app.route('/api/post_create', methods=['POST'])
+def api_post_create():
+    if not is_loggedin(request):
+        return json_response({ "status": 401, 'message': 'Unauthorized' })
+    prms = request.form
+    rv = post_create(url=prms.get('url'), description=prms.get('description'), d=prms.get('date'), tags=prms.getlist('tag'), hidden=prms.get('hidden'))
     return json_response(rv)
