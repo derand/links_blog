@@ -308,7 +308,7 @@ ul.pagination li span.disabled {
 .search_form_h {
     float: right;
     font-size: 13pt;
-    margin-right: 27px; /* set to "0" if login button hidden */
+    margin-right: 0px; /* set to "27px/0px" if login button show/hidden */
 }
 .search_form_h_input {
     position: absolute;
@@ -321,7 +321,7 @@ ul.pagination li span.disabled {
     margin-left: -280px;
     margin-top: 3px;
     display: none;
-    right: 30px; /* set to "0" if login button hidden */
+    right: 0px; /* set to "30px/0px" if login button show/hidden */
 }
 .search_form_h_label {
     /* position: absolute; */
