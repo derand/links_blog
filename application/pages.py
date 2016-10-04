@@ -45,23 +45,24 @@ def index(year, month, day):
         if posts and page and page >= posts.get('pages', sys.maxsize):
             return redirect(url_for('.index'), code=302)
     days = []
-    for p in posts.get('posts', tuple()):
-        if 'short_url' not in p:
-            parsed_uri = urlparse(p.get('url'))
-            p['short_url'] = '{uri.netloc}'.format(uri=parsed_uri)
-        tmp = tuple(filter(lambda el: el.get('day')==p.get('day'), days))
-        if len(tmp):
-            tmp[0]['posts'].append(p)
-        else:
-            days.append({
-                    'day': p.get('day'),
-                    'human_date': common.db_day_to_human(p.get('day')),
-                    'link_date': common.db_day_to_linkdate(p.get('day')),
-                    'posts': [p, ],
-                })
+    if posts:
+        for p in posts.get('posts', tuple()):
+            if 'short_url' not in p:
+                parsed_uri = urlparse(p.get('url'))
+                p['short_url'] = '{uri.netloc}'.format(uri=parsed_uri)
+            tmp = tuple(filter(lambda el: el.get('day')==p.get('day'), days))
+            if len(tmp):
+                tmp[0]['posts'].append(p)
+            else:
+                days.append({
+                        'day': p.get('day'),
+                        'human_date': common.db_day_to_human(p.get('day')),
+                        'link_date': common.db_day_to_linkdate(p.get('day')),
+                        'posts': [p, ],
+                    })
+        if posts.get('pages'):
+            val['pagination'] = common.pagination_dict(page=page, pages=posts.get('pages'), center_side_count=2, url_prefix='/index.html')
     val['days'] = days
-    if posts.get('pages'):
-        val['pagination'] = common.pagination_dict(page=page, pages=posts.get('pages'), center_side_count=2, url_prefix='/index.html')
     val['is_loggedin'] = isloggedin
     val['redirect_url'] = request.base_url
     return render_template('index.html', **val)

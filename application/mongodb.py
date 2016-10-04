@@ -6,15 +6,18 @@ import time, pytz
 from datetime import datetime, date
 import application.common as common
 
+mongo = None
+if os.environ.get('MONGODB_CONNECTION') is not None:
+    app.config['MONGO_URI'] = os.environ.get('MONGODB_CONNECTION')
+    mongo = PyMongo(app)
 
-app.config['MONGO_URI'] = os.environ.get('MONGODB_CONNECTION')
-mongo = PyMongo(app)
 
 @app.before_first_request
 def _run_on_start():
-    print(mongo.db)
-    if mongo.db:
-        mongo.db.links.create_index([('description', 'text'), ('url', 'text'), ('tags', 'text')])
+    if mongo:
+        print(mongo.db)
+        if mongo.db:
+            mongo.db.links.create_index([('description', 'text'), ('url', 'text'), ('tags', 'text')])
 
 '''
 {
@@ -36,7 +39,7 @@ def _run_on_start():
 
 def posts_last_days(page=0, page_size=10, get_hidden=False):
     rv = None
-    if mongo.db:
+    if mongo and mongo.db:
         arr = mongo.db.links.distinct('day')
         days = sorted(arr, reverse=True)
         pages = len(arr) // page_size
@@ -63,7 +66,7 @@ def posts_last_days(page=0, page_size=10, get_hidden=False):
 
 def posts_date(db_day, get_hidden=False):
     rv = None
-    if mongo.db:
+    if mongo and mongo.db:
         query = {
             'day': db_day,
         }
@@ -81,7 +84,7 @@ def posts_search(q_object, page=0, page_size=50, get_hidden=False):
         q_object - query object (dict) from string splitted by common.split_query
     '''
     rv = None
-    if mongo.db:
+    if mongo and mongo.db:
         and_query = []
         if len(q_object.get('tags')):
             for t in q_object.get('tags'):
@@ -126,7 +129,7 @@ def posts_search(q_object, page=0, page_size=50, get_hidden=False):
 
 def post_create(url=None, description=None, tags=[], day=None, hidden=False):
     post = None
-    if mongo.db:
+    if mongo and mongo.db:
         tm = int(time.time())
         post = {
             'created': tm,
@@ -148,7 +151,7 @@ def post_create(url=None, description=None, tags=[], day=None, hidden=False):
     return post
 
 def url_exists(url):
-    if mongo.db:
+    if mongo and mongo.db:
         return mongo.db.links.find_one({ 'url': url })
     return False
 
