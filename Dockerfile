@@ -9,6 +9,6 @@ COPY . /usr/src
 
 RUN pip install --no-cache-dir -r requirements.txt
 
-EXPOSE 8000
+EXPOSE 80
 
-CMD ["gunicorn", "-b", "0.0.0.0:8000", "--log-level=debug", "application:app"]
+CMD ["gunicorn", "-b", "0.0.0.0:80", "--log-level=debug", "application:app"]
