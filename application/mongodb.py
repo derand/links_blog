@@ -40,7 +40,10 @@ def _run_on_start():
 def posts_last_days(page=0, page_size=10, get_hidden=False):
     rv = None
     if mongo and mongo.db:
-        arr = mongo.db.links.distinct('day')
+        if get_hidden:
+            arr = mongo.db.links.distinct('day')
+        else:
+            arr = mongo.db.links.find({ '$or': [ { "hidden": { "$exists": False } }, { "hidden": False } ] }).distinct('day')
         days = sorted(arr, reverse=True)
         pages = len(arr) // page_size
         if len(arr) % page_size:
