@@ -1,11 +1,16 @@
 #
 
-FROM        python:3
+FROM        python:3.9-slim-buster
 MAINTAINER  Andrey Derevyagin
 
-RUN mkdir -p /usr/src
-WORKDIR /usr/src
-COPY . /usr/src
+COPY . /app
+WORKDIR /app
+
+ENV MONGODB_CONNECTION \
+    FLASK_SECRET \
+    GOOGLE_CLIENT_ID \
+    GOOGLE_CLIENT_SECRET \
+    GOOGLE_USER_EMAIL
 
 RUN pip install --no-cache-dir -r requirements.txt
 

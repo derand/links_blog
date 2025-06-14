@@ -159,7 +159,7 @@ def url_exists(url):
     return False
 
 def has_user_access(credentials_str, user_info):
-    return user_info.get('verified_email') and user_info.get('email') == os.environ.get('GOOGLE_USER_EMAIL')
+    return user_info.get('verified_email') and user_info.get('email') in os.environ.get('GOOGLE_USER_EMAIL', '').split(',')
     '''
     if mongo.db:
         pass

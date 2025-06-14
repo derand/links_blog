@@ -162,7 +162,7 @@ def logout():
 @app.route('/oauth2callback')
 def oauth2callback():
     constructor_kwargs = {
-                'redirect_uri': url_for('oauth2callback', _external=True),
+                'redirect_uri': url_for('oauth2callback', _external=True).replace("http://", "https://"),
                 'auth_uri': 'https://accounts.google.com/o/oauth2/auth',
                 'token_uri': 'https://accounts.google.com/o/oauth2/token',
                 'login_hint': None,
