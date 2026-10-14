@@ -27,6 +27,7 @@ body {
   background: linear-gradient(top, rgba(0, 0, 0, 0.12), rgba(0, 0, 0, 0));
   background-position: top left, top left;
   background-repeat: repeat-x, repeat;
+  margin-bottom: 10px;
 }
 #header {
   position: relative;
@@ -198,12 +199,19 @@ a.day_title, a.day_title:visited, a.day_title:hover {
     font-size: 100%;
 
     /* To give the same size to all text field */
-    width: 290px;
+/*    width: 290px; */
     -moz-box-sizing: border-box;
     box-sizing: border-box;
 
     /* To harmonize the look & feel of text field border */
     border: 1px solid #999;
+}
+#post_create input:not([type=checkbox]) {
+    width: 290px;
+}
+#post_create input[type="checkbox"]
+{
+/*    vertical-align:middle;*/
 }
 #post_create input:focus, textarea:focus {
     /* To give a little highlight on active elements */
@@ -219,6 +227,7 @@ a.day_title, a.day_title:visited, a.day_title:hover {
     /* To allow users to resize any textarea vertically
        It does not work on all browsers */
     resize: vertical;
+    width: 290px;
 }
 #post_create .form_button {
     /* To position the buttons to the same position of the text fields */
@@ -294,3 +303,65 @@ ul.pagination li span.disabled {
     /* text-align: center; */
     color: #808080;
 }
+
+
+.search_form_h {
+    float: right;
+    font-size: 13pt;
+    margin-right: 0px; /* set to "27px/0px" if login button show/hidden */
+}
+.search_form_h_input {
+    position: absolute;
+    font-size: 100%;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
+    border: 1px solid #999;
+    width: 280px;
+    padding: 5px;
+    margin-left: -280px;
+    margin-top: 3px;
+    display: none;
+    right: 0px; /* set to "30px/0px" if login button show/hidden */
+}
+.search_form_h_label {
+    /* position: absolute; */
+    font-size: 0;
+    color: rgba(0, 0, 0, 0);
+    text-indent: -9999px;
+    width: 18px;
+    height: 18px;
+    display: block;
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+}
+#search_form_h_a {
+    /* background-color: #ddd; */
+    padding: 5px;
+    position: absolute;
+    margin-top: 6px;
+    margin-left: -30px;
+    border-radius: 5px;
+}
+
+a.login_out {
+    float: right;
+    padding: 5px;
+    margin-top: 6px;
+    border-radius: 5px;
+    background-color: rgba(0, 0, 0, 0);
+}
+a.login_out:hover {
+    background-color: #ddd;
+}
+span.login_out {
+    width: 18px;
+    height: 18px;
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    display: block;
+}
+
+.hidden {
+    color: #909090;
+}
+

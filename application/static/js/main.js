@@ -1,5 +1,16 @@
 //$(document).ready(function(){
 $(function(){
+    function setCookie(key, value) {
+        var expires = new Date();
+        expires.setTime(expires.getTime() + 86400000*7); //1 week  
+        document.cookie = key + '=' + value + ';expires=' + expires.toUTCString();
+    }
+
+    function getCookie(key) {
+        var keyValue = document.cookie.match('(^|;) ?' + key + '=([^;]*)(;|$)');
+        return keyValue ? keyValue[2] : null;
+    }  
+
     $.ajaxSettings.traditional = true;
     var post_create_form = $("#post_create");
     post_create_form.hide();
@@ -7,6 +18,7 @@ $(function(){
         post_create_form.slideToggle(200);
         event.preventDefault();
     });
+    $("#post_create").find('#form_hidden')[0].checked = getCookie('hidden');
     post_create_form.submit(function( event ) {
         var url = $("#post_create").find('input[name="url"]').val();
         if (!url) {
@@ -36,11 +48,16 @@ $(function(){
                 tag: tags,
                 //date: "2016-08-20"
             };
-        console.log('--', date);
         if (date) {
             prms['date'] = date;
         }
-        console.log(url, description, tags);
+        var hidden = $("#post_create").find('#form_hidden')[0].checked;
+        if (hidden) {
+            prms['hidden'] = true;
+            setCookie('hidden', hidden);
+        } else {
+            setCookie('hidden', '');
+        }
         $.ajax({
             type: "POST",
             url: "/api/post_create",

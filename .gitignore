@@ -4,5 +4,7 @@ venv
 venv_python2.7
 *.pyc
 run.sh
+credentials.env
 test.py
 __pycache__
+
