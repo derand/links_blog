@@ -1,10 +1,16 @@
 .DS_Store
 
-venv
-venv_python2.7
-*.pyc
-run.sh
-credentials.env
-test.py
-__pycache__
+# Database, Mongo exports and other local data: the repo is public and
+# the data has hidden links.
+/data/
+*.db
+*.db-wal
+*.db-shm
 
+# Build output
+/linksblog
+
+# Local files of the old Python version
+credentials.env
+run.sh
+test.py
