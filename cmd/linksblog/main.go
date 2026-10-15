@@ -17,6 +17,7 @@ import (
 const usage = `Usage: linksblog <command> [flags]
 
 Commands:
+  serve     run the web site
   migrate   create the database or upgrade its schema
 
 Run "linksblog <command> -h" for the command's flags.
@@ -32,6 +33,8 @@ func main() {
 
 	var err error
 	switch cmd, args := flag.Arg(0), flag.Args()[1:]; cmd {
+	case "serve":
+		err = runServe(args)
 	case "migrate":
 		err = runMigrate(args)
 	default:

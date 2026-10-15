@@ -3,7 +3,6 @@ package store
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 	"time"
 )
@@ -89,39 +88,9 @@ func (s *Store) CountLinks(ctx context.Context) (int, error) {
 
 // LinkByURLNorm returns the link with the given dedup key, or nil if there is none.
 func (s *Store) LinkByURLNorm(ctx context.Context, norm string) (*Link, error) {
-	var (
-		l                Link
-		created, updated int64
-		sourceRef        sql.NullString
-	)
-	err := s.db.QueryRowContext(ctx, `
-		SELECT id, url, url_norm, description, title, site_description,
-		       day, created_at, updated_at, hidden, source, source_ref
-		  FROM links WHERE url_norm = ?`, norm).Scan(
-		&l.ID, &l.URL, &l.URLNorm, &l.Description, &l.Title, &l.SiteDescription,
-		&l.Day, &created, &updated, &l.Hidden, &l.Source, &sourceRef)
-	if errors.Is(err, sql.ErrNoRows) {
-		return nil, nil
-	}
-	if err != nil {
+	ls, err := s.queryLinks(ctx, `WHERE l.url_norm = ?`, norm)
+	if err != nil || len(ls) == 0 {
 		return nil, err
 	}
-	l.CreatedAt = time.Unix(created, 0)
-	l.UpdatedAt = time.Unix(updated, 0)
-	l.SourceRef = sourceRef.String
-	rows, err := s.db.QueryContext(ctx, `
-		SELECT t.name FROM link_tags lt JOIN tags t ON t.id = lt.tag_id
-		 WHERE lt.link_id = ? ORDER BY lt.pos`, l.ID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var name string
-		if err := rows.Scan(&name); err != nil {
-			return nil, err
-		}
-		l.Tags = append(l.Tags, name)
-	}
-	return &l, rows.Err()
+	return ls[0], nil
 }

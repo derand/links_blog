@@ -1,0 +1,47 @@
+{{define "layout" -}}
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Links blog{{with .Title}} - {{.}}{{end}}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Andika&display=swap">
+<link rel="stylesheet" href="{{static "style.css"}}">
+<link rel="icon" href="{{static "favicon.svg"}}" type="image/svg+xml">
+</head>
+<body>
+<header class="site-header">
+  <div class="container header-row">
+    <a class="logo" href="/">Links blog</a>
+    {{- if not .HideHeaderSearch}}
+    <form class="header-search" action="/search" method="get" role="search">
+      <input type="search" name="q" placeholder="search" aria-label="Search">
+    </form>
+    {{- end}}
+  </div>
+</header>
+<main class="container">
+{{template "content" .}}
+</main>
+<footer class="site-footer">
+  <div class="container">© 2016–{{.Year}}{{with .User}} · {{.}} · <a href="/logout">log out</a>{{end}}</div>
+</footer>
+</body>
+</html>
+{{- end}}
+
+{{define "post" -}}
+<div class="post{{if .Hidden}} hidden{{end}}">
+  {{- if .ShowDate}}<span class="date"><a href="/{{.Day}}.html">{{.Day}}</a></span> {{end -}}
+  <a class="link" href="{{.URL}}">{{.Host}}</a>: <span class="description">{{.Text}}</span>
+  {{- range .Tags}} <a class="tag" href="/search?q={{tagQuery .}}">{{.}}</a>{{end -}}
+</div>
+{{- end}}
+
+{{define "pagination" -}}
+{{if .}}<nav class="pagination" aria-label="Pages">
+  {{- range .}}{{if .URL}}<a href="{{.URL}}">{{.Title}}</a>{{else}}<span{{with .Class}} class="{{.}}"{{end}}{{if eq .Class "active"}} aria-current="page"{{end}}>{{.Title}}</span>{{end}}{{end -}}
+</nav>{{end}}
+{{- end}}

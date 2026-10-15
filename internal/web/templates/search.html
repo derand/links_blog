@@ -1,0 +1,19 @@
+{{define "content" -}}
+<form class="search-form" method="get" action="/search" role="search">
+  <div class="search-row">
+    <input type="search" name="q" value="{{.Query}}" aria-label="Search" autofocus>
+    <button type="submit">Search</button>
+  </div>
+  <p class="search-hint">
+    {{- if .Error}}<span class="error">{{.Error}}</span>
+    {{- else if .Searched}}Search results: {{.Total}}
+    {{- else}}Words, "exact phrases", <code>tag:name</code>, <code>date:2016-09</code>{{end -}}
+  </p>
+</form>
+<article>
+  {{- range .Posts}}
+  {{template "post" .}}
+  {{- end}}
+</article>
+{{template "pagination" .Pagination}}
+{{- end}}

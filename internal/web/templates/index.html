@@ -1,0 +1,19 @@
+{{define "content" -}}
+{{range .Days}}
+<section class="day">
+  {{- if $.OneDay}}
+  <h1 class="day-title">{{.Human}}</h1>
+  {{- else}}
+  <h2 class="day-title"><a href="/{{.Day}}.html">{{.Human}}</a></h2>
+  {{- end}}
+  <article>
+    {{- range .Posts}}
+    {{template "post" .}}
+    {{- end}}
+  </article>
+</section>
+{{else}}
+<p class="empty">No links yet.</p>
+{{end}}
+{{template "pagination" .Pagination}}
+{{- end}}
