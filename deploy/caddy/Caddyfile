@@ -1,8 +1,0 @@
-{
-	email andrei@derand.net
-}
-
-linksblog.derand.net {
-	encode zstd gzip
-	reverse_proxy linksblog:8080
-}

@@ -31,37 +31,33 @@ OAuth client must allow the redirect URI `<base URL>/oauth2callback`.
 The database path is set with `-db` or `LINKSBLOG_DB` (default `data/linksblog.db`).
 `data/` is git-ignored.
 
-## Deployment
+## Running with Docker
 
-The site runs in Docker behind a shared [Caddy](https://caddyserver.com/) that
-terminates TLS for all sites of the server. Containers talk over the external
-network `web`; only Caddy publishes ports 80 and 443.
+CI publishes the image `ghcr.io/derand/links_blog` for `linux/amd64` and
+`linux/arm64`; `:latest` follows master.
 
 ```sh
-docker network create web
-
-# Caddy, once per server: copy deploy/caddy/ to /opt/caddy/, add a site block
-# per site to the Caddyfile, then
-cd /opt/caddy && docker compose up -d
-docker compose exec caddy caddy reload --config /etc/caddy/Caddyfile   # after edits
-
-# The site: compose.yaml and .env (see deploy/linksblog.env.example) in /opt/linksblog/,
-# the database in /opt/linksblog/data/ owned by the image's user 65532.
-sudo chown -R 65532:65532 /opt/linksblog/data
-cd /opt/linksblog && docker compose up -d
+mkdir linksblog && cd linksblog
+curl -fsSLO https://raw.githubusercontent.com/derand/links_blog/master/compose.yaml
+curl -fsSL https://raw.githubusercontent.com/derand/links_blog/master/.env.example -o .env
+# fill in .env
+mkdir data && sudo chown 65532:65532 data
+docker compose up -d
 ```
 
-CI publishes the image for `linux/arm64` and `linux/amd64`: every push to master
-that changes the code updates `ghcr.io/derand/links_blog:latest`. To update the
-server, run `docker compose pull && docker compose up -d`. To roll back, run the CI
-workflow by hand ("Run workflow", or `gh workflow run ci.yaml -f ref=<commit>`):
-it publishes `:sha-<commit>`; set `LINKSBLOG_VERSION=sha-<commit>` in `.env` and
-pull again. A local build: `docker build -t linksblog .`.
+The container runs as an unprivileged user (UID 65532), so `data/` must be
+writable by it. The database is created and migrated on start; to use an existing
+one, put it at `data/linksblog.db` first.
 
-Ports 80 and 443
-(and 443/udp for HTTP/3) must be open both in the host firewall and in the cloud
-provider's network rules, and DNS must point at the server before Caddy starts
-so it can obtain the certificate.
+The site listens on `127.0.0.1:8080` and expects a reverse proxy that terminates
+TLS in front of it; set `LINKSBLOG_BASE_URL` to the public `https://` URL. For
+another setup, such as a proxy in its own container, put the changes into
+`compose.override.yaml` next to `compose.yaml`.
+
+Update with `docker compose pull && docker compose up -d`. To run a particular
+commit, start the CI workflow by hand ("Run workflow", or
+`gh workflow run ci.yaml -f ref=<commit>`): it publishes `:sha-<commit>`, which is
+then set as `LINKSBLOG_VERSION` in `.env`. A local build: `docker build -t linksblog .`.
 
 ## Importing the old MongoDB data
 

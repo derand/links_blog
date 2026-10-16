@@ -1,21 +1,17 @@
-# The site behind the shared Caddy proxy (see deploy/caddy/). Settings and
-# secrets are read from .env next to this file; deploy/linksblog.env.example
-# lists them. Update: docker compose pull && docker compose up -d
+# Settings and secrets are read from .env next to this file (see .env.example).
+# Host-specific changes, such as another network for a proxy container, go to
+# compose.override.yaml, which Compose merges automatically.
 services:
   linksblog:
     image: ghcr.io/derand/links_blog:${LINKSBLOG_VERSION:-latest}
     restart: unless-stopped
     env_file: .env
+    ports:
+      - "127.0.0.1:8080:8080"
     volumes:
       - ./data:/data
-    networks:
-      - web
     logging:
       driver: json-file
       options:
         max-size: 10m
         max-file: "3"
-
-networks:
-  web:
-    external: true
