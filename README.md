@@ -51,8 +51,14 @@ sudo chown -R 65532:65532 /opt/linksblog/data
 cd /opt/linksblog && docker compose up -d
 ```
 
-The image is built for `linux/arm64` and `linux/amd64` from the same Dockerfile
-(`docker buildx build --platform linux/arm64,linux/amd64 .`). Ports 80 and 443
+CI publishes the image for `linux/arm64` and `linux/amd64`: every push to master
+that changes the code updates `ghcr.io/derand/links_blog:latest`. To update the
+server, run `docker compose pull && docker compose up -d`. To roll back, run the CI
+workflow by hand ("Run workflow", or `gh workflow run ci.yaml -f ref=<commit>`):
+it publishes `:sha-<commit>`; set `LINKSBLOG_VERSION=sha-<commit>` in `.env` and
+pull again. A local build: `docker build -t linksblog .`.
+
+Ports 80 and 443
 (and 443/udp for HTTP/3) must be open both in the host firewall and in the cloud
 provider's network rules, and DNS must point at the server before Caddy starts
 so it can obtain the certificate.

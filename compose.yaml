@@ -1,10 +1,9 @@
 # The site behind the shared Caddy proxy (see deploy/caddy/). Settings and
 # secrets are read from .env next to this file; deploy/linksblog.env.example
-# lists them.
+# lists them. Update: docker compose pull && docker compose up -d
 services:
   linksblog:
-    build: .
-    image: linksblog
+    image: ghcr.io/derand/links_blog:${LINKSBLOG_VERSION:-latest}
     restart: unless-stopped
     env_file: .env
     volumes:
