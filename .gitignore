@@ -16,3 +16,5 @@ run.sh
 test.py
 
 plan.md
+# Deployment settings and secrets
+.env

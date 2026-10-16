@@ -1,0 +1,22 @@
+# The site behind the shared Caddy proxy (see deploy/caddy/). Settings and
+# secrets are read from .env next to this file; deploy/linksblog.env.example
+# lists them.
+services:
+  linksblog:
+    build: .
+    image: linksblog
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - ./data:/data
+    networks:
+      - web
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+networks:
+  web:
+    external: true

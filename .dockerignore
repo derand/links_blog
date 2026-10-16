@@ -1,0 +1,7 @@
+# Only the Go sources go into the build context: data/ holds the database
+# with hidden links, and the old Python files hold credentials.
+*
+!go.mod
+!go.sum
+!cmd/
+!internal/
