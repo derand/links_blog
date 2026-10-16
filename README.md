@@ -63,7 +63,7 @@ then set as `LINKSBLOG_VERSION` in `.env`. A local build: `docker build -t links
 
 ```sh
 mongoexport --uri "$MONGODB_CONNECTION" --collection links --jsonArray --out data/links.json
-go run ./tools/import-mongo -in data/links.json -db data/linksblog.db
+go run ./tools/import-mongo -in data/links.json -db data/linksblog.db -tz Europe/Kyiv
 ```
 
 The import needs an empty database. It converts the old `YYYYDDD` day numbers to

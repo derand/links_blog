@@ -31,7 +31,7 @@ import (
 func main() {
 	in := flag.String("in", "", "mongoexport output file (required)")
 	dbPath := flag.String("db", "data/linksblog.db", "SQLite database to create; must be empty")
-	tz := flag.String("tz", "Europe/Kyiv", "time zone of the blog's days")
+	tz := flag.String("tz", "Local", "time zone of the blog's days, e.g. Europe/Kyiv")
 	flag.Parse()
 	if *in == "" {
 		flag.Usage()

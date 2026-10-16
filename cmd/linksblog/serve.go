@@ -32,7 +32,8 @@ func runServe(args []string) error {
 		fs.PrintDefaults()
 		os.Stderr.WriteString(`
 Environment:
-  LINKSBLOG_TZ              time zone of the blog's days (default Europe/Kyiv)
+  TZ                        time zone of the blog's days, e.g. Europe/Kyiv
+                            (default: the system's local time; UTC in the container)
   LINKSBLOG_BASE_URL        public URL of the site, e.g. https://links.example.com
   LINKSBLOG_SESSION_SECRET  random string of 32+ bytes for signing cookies (required)
   LINKSBLOG_ADMIN_EMAILS    comma-separated Google accounts allowed to sign in
@@ -43,10 +44,6 @@ Sign-in is disabled unless the base URL, admin emails and Google client are set.
 	}
 	fs.Parse(args)
 
-	loc, err := time.LoadLocation(env("LINKSBLOG_TZ", "Europe/Kyiv"))
-	if err != nil {
-		return err
-	}
 	var admins []string
 	for _, e := range strings.Split(os.Getenv("LINKSBLOG_ADMIN_EMAILS"), ",") {
 		if e = strings.TrimSpace(e); e != "" {
@@ -79,7 +76,9 @@ Sign-in is disabled unless the base URL, admin emails and Google client are set.
 		slog.Info("database opened", "path", *dbPath, "links", n)
 	}
 
-	h, err := web.New(st, a, loc)
+	zone, _ := time.Now().Zone()
+	slog.Info("time zone of the days", "zone", zone)
+	h, err := web.New(st, a, time.Local)
 	if err != nil {
 		return err
 	}
