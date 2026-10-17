@@ -33,6 +33,10 @@ OAuth client must allow the redirect URI `<base URL>/oauth2callback`.
 The database path is set with `-db` or `LINKSBLOG_DB` (default `data/linksblog.db`).
 `data/` is git-ignored.
 
+`serve` fills empty titles and descriptions of links from their pages in the
+background, one page every 2 seconds and only from public addresses;
+`LINKSBLOG_FETCH_METADATA=off` turns it off.
+
 ## Running with Docker
 
 CI publishes the image `ghcr.io/derand/links_blog` for `linux/amd64` and

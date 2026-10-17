@@ -14,6 +14,7 @@ import (
 
 	"github.com/derand/links_blog/internal/auth"
 	"github.com/derand/links_blog/internal/bot/discord"
+	"github.com/derand/links_blog/internal/meta"
 	"github.com/derand/links_blog/internal/service"
 	"github.com/derand/links_blog/internal/store"
 	"github.com/derand/links_blog/internal/web"
@@ -70,6 +71,7 @@ Environment:
 Sign-in is disabled unless the base URL, admin emails and Google client are set.
   DISCORD_TOKEN             Discord bot token; the bot runs only when it is set
   DISCORD_ALLOWED_USERS     comma-separated Discord user IDs whose messages are accepted
+  LINKSBLOG_FETCH_METADATA  "off" stops fetching titles and descriptions from the links' pages
 `)
 	}
 	fs.Parse(args)
@@ -106,6 +108,11 @@ Sign-in is disabled unless the base URL, admin emails and Google client are set.
 	h, err := web.New(st, svc, a, time.Local)
 	if err != nil {
 		return err
+	}
+	if os.Getenv("LINKSBLOG_FETCH_METADATA") != "off" {
+		go svc.RunMetadata(ctx, meta.New(10*time.Second), 2*time.Second)
+	} else {
+		slog.Info("fetching page metadata is off")
 	}
 	if token := os.Getenv("DISCORD_TOKEN"); token != "" {
 		startDiscord(ctx, token, svc)

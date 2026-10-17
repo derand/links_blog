@@ -5,6 +5,7 @@ package meta
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
@@ -12,9 +13,12 @@ import (
 	"net"
 	"net/http"
 	"net/netip"
+	"net/url"
+	"regexp"
 	"strings"
 	"syscall"
 	"time"
+	"unicode"
 	"unicode/utf8"
 
 	"golang.org/x/net/html"
@@ -43,6 +47,35 @@ func (e *StatusError) Error() string { return fmt.Sprintf("http status %d", e.Co
 
 // ErrBlockedAddress is returned for hosts that resolve to non-public addresses.
 var ErrBlockedAddress = errors.New("address is not public")
+
+var errScheme = errors.New("unsupported scheme")
+
+// BlockedError means the site answered with a guard instead of the page: a bot
+// check, a captcha or a login wall. Asking again won't get past it.
+type BlockedError struct{ Reason string }
+
+func (e *BlockedError) Error() string { return "blocked: " + e.Reason }
+
+// Permanent reports whether a Fetch error will most likely repeat: the page is
+// blocked or gone, or its host doesn't exist, isn't public or has a broken
+// certificate. Timeouts, refused connections, 429 and 5xx are worth a retry.
+func Permanent(err error) bool {
+	var (
+		blocked *BlockedError
+		status  *StatusError
+		dns     *net.DNSError
+		cert    *tls.CertificateVerificationError
+	)
+	switch {
+	case errors.As(err, &blocked), errors.Is(err, ErrBlockedAddress), errors.Is(err, errScheme), errors.As(err, &cert):
+		return true
+	case errors.As(err, &status):
+		return status.Code >= 400 && status.Code < 500 && status.Code != 408 && status.Code != 429
+	case errors.As(err, &dns):
+		return dns.IsNotFound
+	}
+	return false
+}
 
 type Fetcher struct {
 	client *http.Client
@@ -92,13 +125,13 @@ func newFetcher(timeout time.Duration, allowed func(netip.Addr) bool) *Fetcher {
 
 func checkScheme(scheme string) error {
 	if scheme != "http" && scheme != "https" {
-		return fmt.Errorf("unsupported scheme %q", scheme)
+		return fmt.Errorf("%w %q", errScheme, scheme)
 	}
 	return nil
 }
 
 // Fetch downloads the page at url and returns its metadata. Pages that are not
-// HTML have none.
+// HTML have none. Guard pages instead of the content give a *BlockedError.
 func (f *Fetcher) Fetch(ctx context.Context, url string) (Metadata, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
@@ -115,8 +148,18 @@ func (f *Fetcher) Fetch(ctx context.Context, url string) (Metadata, error) {
 		return Metadata{}, err
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		return Metadata{}, &StatusError{resp.StatusCode}
+	if resp.Header.Get("Cf-Mitigated") == "challenge" {
+		return Metadata{}, &BlockedError{"cloudflare challenge"}
+	}
+	switch code := resp.StatusCode; {
+	case code == 401 || code == 403 || code == 418:
+		return Metadata{}, &BlockedError{fmt.Sprintf("http status %d", code)}
+	case code < 200 || code > 299:
+		return Metadata{}, &StatusError{code}
+	}
+	final := resp.Request.URL // after redirects
+	if loginPath.MatchString(final.Path) && !loginPath.MatchString(req.URL.Path) {
+		return Metadata{}, &BlockedError{"redirected to a login page"}
 	}
 	ct := resp.Header.Get("Content-Type")
 	if mt, _, err := mime.ParseMediaType(ct); ct != "" && (err != nil || mt != "text/html" && mt != "application/xhtml+xml") {
@@ -126,12 +169,71 @@ func (f *Fetcher) Fetch(ctx context.Context, url string) (Metadata, error) {
 	if err != nil {
 		return Metadata{}, err
 	}
-	return parse(body), nil
+	return parse(body).metadata(final)
 }
 
-// parse reads the page's <head>: og: and twitter: tags win over <title> and
-// the plain description.
-func parse(r io.Reader) Metadata {
+var (
+	loginPath = regexp.MustCompile(`(?i)/(log-?in|sign-?in|auth|checkpoint)(/|\.|$)`)
+	botCheck  = regexp.MustCompile(`(?i)^(just a moment|attention required|checking (you are not a bot|your browser)|` +
+		`verifying you are human|are you a robot|one more step|ddos-guard|access denied)`)
+)
+
+// head is what a page's <head> says about it.
+type head struct {
+	ogTitle, twitterTitle, title string
+	ogDesc, twitterDesc, desc    string
+}
+
+// metadata picks the page's title and description: og: and twitter: tags win
+// over <title> and the plain description. On a page below the site's root,
+// a title that is just the site's name (Reddit, Facebook) is a login wall or
+// a JavaScript stub, and a bot-check title is a guard: both are errors.
+func (h head) metadata(u *url.URL) (Metadata, error) {
+	m := Metadata{Description: first(maxDesc, h.ogDesc, h.twitterDesc, h.desc)}
+	deep := u != nil && (strings.Trim(u.Path, "/") != "" || u.RawQuery != "")
+	var generic string
+	for _, t := range []string{h.ogTitle, h.twitterTitle, h.title} {
+		t = first(maxTitle, t)
+		switch {
+		case t == "":
+			continue
+		case botCheck.MatchString(t):
+			return Metadata{}, &BlockedError{"bot check page: " + t}
+		case deep && siteName(t, u.Hostname()):
+			generic = t
+			continue
+		}
+		m.Title = t
+		return m, nil
+	}
+	if generic != "" {
+		return Metadata{}, &BlockedError{"only the site's name as the title: " + generic}
+	}
+	return m, nil
+}
+
+// siteName reports whether title is nothing but the site's name: "Reddit"
+// for www.reddit.com, "- YouTube", "arhivach.ng".
+func siteName(title, host string) bool {
+	alnum := func(s string) string {
+		return strings.Map(func(r rune) rune {
+			if unicode.IsLetter(r) || unicode.IsDigit(r) {
+				return unicode.ToLower(r)
+			}
+			return -1
+		}, s)
+	}
+	t := alnum(title)
+	if t == "" {
+		return false
+	}
+	host = strings.TrimPrefix(strings.ToLower(host), "www.")
+	labels := strings.Split(host, ".")
+	return t == alnum(host) || len(labels) >= 2 && t == labels[len(labels)-2]
+}
+
+// parse reads the page's <head>.
+func parse(r io.Reader) head {
 	var (
 		z       = html.NewTokenizer(r)
 		found   = map[string]string{}
@@ -181,9 +283,9 @@ loop:
 			}
 		}
 	}
-	return Metadata{
-		Title:       first(maxTitle, found["og:title"], found["twitter:title"], title.String()),
-		Description: first(maxDesc, found["og:description"], found["twitter:description"], found["description"]),
+	return head{
+		ogTitle: found["og:title"], twitterTitle: found["twitter:title"], title: title.String(),
+		ogDesc: found["og:description"], twitterDesc: found["twitter:description"], desc: found["description"],
 	}
 }
 

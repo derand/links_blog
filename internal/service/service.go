@@ -68,14 +68,22 @@ type AddResult struct {
 }
 
 type Service struct {
-	st  *store.Store
-	loc *time.Location
-	now func() time.Time
+	st   *store.Store
+	loc  *time.Location
+	now  func() time.Time
+	wake chan struct{} // tells RunMetadata that a link was added or changed
 }
 
 // New returns a service that dates links in loc, the blog's time zone.
 func New(st *store.Store, loc *time.Location) *Service {
-	return &Service{st: st, loc: loc, now: time.Now}
+	return &Service{st: st, loc: loc, now: time.Now, wake: make(chan struct{}, 1)}
+}
+
+func (s *Service) poke() {
+	select {
+	case s.wake <- struct{}{}:
+	default:
+	}
 }
 
 var _ LinkService = (*Service)(nil)
@@ -118,6 +126,9 @@ func (s *Service) AddLink(ctx context.Context, in NewLink) (AddResult, error) {
 	if err != nil {
 		return AddResult{}, err
 	}
+	if dup == store.NotDup {
+		s.poke()
+	}
 	return AddResult{Link: got, Duplicate: dup}, nil
 }
 
@@ -145,6 +156,9 @@ func (s *Service) UpdateLink(ctx context.Context, in LinkEdit) (AddResult, error
 	})
 	if err != nil {
 		return AddResult{}, err
+	}
+	if dup == store.NotDup {
+		s.poke()
 	}
 	return AddResult{Link: got, Duplicate: dup}, nil
 }

@@ -118,7 +118,8 @@ func ftsExpr(terms []string) string {
 func (s *Store) queryLinks(ctx context.Context, tail string, args ...any) ([]*Link, error) {
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT l.id, l.url, l.url_norm, l.description, l.title, l.site_description,
-		       l.day, l.created_at, l.updated_at, l.hidden, l.source, l.source_ref
+		       l.day, l.created_at, l.updated_at, l.hidden, l.source, l.source_ref,
+		       l.meta_status, l.meta_checked_at, l.meta_error, l.meta_failures
 		  FROM links l `+tail, args...)
 	if err != nil {
 		return nil, err
@@ -133,10 +134,15 @@ func (s *Store) queryLinks(ctx context.Context, tail string, args ...any) ([]*Li
 			l                Link
 			created, updated int64
 			sourceRef        sql.NullString
+			checked          int64
 		)
 		if err := rows.Scan(&l.ID, &l.URL, &l.URLNorm, &l.Description, &l.Title, &l.SiteDescription,
-			&l.Day, &created, &updated, &l.Hidden, &l.Source, &sourceRef); err != nil {
+			&l.Day, &created, &updated, &l.Hidden, &l.Source, &sourceRef,
+			&l.MetaStatus, &checked, &l.MetaError, &l.MetaFailures); err != nil {
 			return nil, err
+		}
+		if checked != 0 {
+			l.MetaCheckedAt = time.Unix(checked, 0)
 		}
 		l.CreatedAt = time.Unix(created, 0)
 		l.UpdatedAt = time.Unix(updated, 0)

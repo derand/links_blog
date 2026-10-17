@@ -332,7 +332,7 @@ func TestEditAndDelete(t *testing.T) {
 	r = s.get(edit, true)
 	r.has(t, "edit page", `action="`+edit+`"`, `value="https://site5.example.com/page"`, ">Visible post 5</textarea>",
 		`name="tags" value="common"`, `type="date" value="2020-01-05" required`, `name="title"`, ">Save</button>",
-		`action="/delete/`+id+`"`)
+		`action="/delete/`+id+`"`, "Page metadata: waiting.")
 
 	form := url.Values{"url": {"https://site5.example.com/other"}, "description": {"Edited post"},
 		"title": {"Page T"}, "tags": {"common, more"}, "day": {"2020-01-06"}}

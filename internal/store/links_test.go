@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -121,5 +122,104 @@ func TestUpdateAndDeleteLink(t *testing.T) {
 	s.db.QueryRowContext(ctx, `SELECT count(*) FROM tags`).Scan(&unused)
 	if unused != 1 {
 		t.Errorf("tags left: %d, want 1 (Go)", unused)
+	}
+}
+
+func TestMetadataQueue(t *testing.T) {
+	ctx := context.Background()
+	s := openTest(t)
+	now := time.Unix(1_800_000_000, 0)
+	add := func(norm, title, sd string) *Link {
+		t.Helper()
+		l := &Link{URL: "https://" + norm, URLNorm: norm, Day: "2026-10-18", CreatedAt: now, Title: title, SiteDescription: sd}
+		if _, _, err := s.AddLink(ctx, l); err != nil {
+			t.Fatal(err)
+		}
+		return l
+	}
+	next := func(at time.Time) []int64 {
+		t.Helper()
+		ls, err := s.NextForMetadata(ctx, at, 10)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var ids []int64
+		for _, l := range ls {
+			ids = append(ids, l.ID)
+		}
+		return ids
+	}
+	save := func(id int64, r MetaResult, at time.Time) {
+		t.Helper()
+		if err := s.SaveMetadata(ctx, id, r, at); err != nil {
+			t.Fatal(err)
+		}
+	}
+	old := add("old.example", "", "")
+	add("full.example", "T", "D")
+	half := add("half.example", "Discord title", "")
+	blocked := add("blocked.example", "", "")
+	dead := add("dead.example", "", "")
+
+	if got := fmt.Sprint(next(now)); got != fmt.Sprint([]int64{dead.ID, blocked.ID, half.ID, old.ID}) {
+		t.Fatalf("queue: %v", got)
+	}
+	// Success fills only what is empty.
+	save(half.ID, MetaResult{Status: MetaOK, Title: "Page title", SiteDescription: "Page desc"}, now)
+	l, _ := s.LinkByID(ctx, half.ID)
+	if l.Title != "Discord title" || l.SiteDescription != "Page desc" || l.MetaStatus != MetaOK || !l.MetaCheckedAt.Equal(now) {
+		t.Errorf("after success: %+v", l)
+	}
+	// Blocked and dead links are not retried.
+	save(blocked.ID, MetaResult{Status: MetaBlocked, Error: "blocked: cloudflare challenge"}, now)
+	save(dead.ID, MetaResult{Status: MetaDead, Error: "http status 404"}, now)
+	if got := fmt.Sprint(next(now.Add(1000 * time.Hour))); got != fmt.Sprint([]int64{old.ID}) {
+		t.Fatalf("after blocked and dead: %v", got)
+	}
+	l, _ = s.LinkByID(ctx, blocked.ID)
+	if l.MetaStatus != MetaBlocked || l.MetaError != "blocked: cloudflare challenge" || l.MetaFailures != 0 {
+		t.Errorf("blocked: %+v", l)
+	}
+
+	// Failures worth a retry wait 1 h, then 4 h, then give up.
+	at := now
+	for i, wait := range []time.Duration{time.Hour, 4 * time.Hour} {
+		save(old.ID, MetaResult{Status: MetaError, Error: "http status 503"}, at)
+		if got := next(at.Add(wait - time.Second)); len(got) != 0 {
+			t.Errorf("failure %d: retried too early", i+1)
+		}
+		at = at.Add(wait)
+		if got := next(at); len(got) != 1 || got[0] != old.ID {
+			t.Errorf("failure %d: not retried after %v", i+1, wait)
+		}
+	}
+	save(old.ID, MetaResult{Status: MetaError, Error: "http status 503"}, at)
+	if got := next(at.Add(1000 * time.Hour)); len(got) != 0 {
+		t.Errorf("retried after %d failures", MetaRetries)
+	}
+	l, _ = s.LinkByID(ctx, old.ID)
+	if l.MetaStatus != MetaError || l.MetaError != "http status 503" || l.MetaFailures != 3 {
+		t.Errorf("failure state: %+v", l)
+	}
+
+	// Editing: the same URL and texts keep the state, a new URL resets it.
+	l.Description = "edited"
+	s.UpdateLink(ctx, l)
+	if got := next(at.Add(1000 * time.Hour)); len(got) != 0 {
+		t.Error("edit without changes requeued the link")
+	}
+	l.URL, l.URLNorm = "https://new.example", "new.example"
+	s.UpdateLink(ctx, l)
+	l, _ = s.LinkByID(ctx, old.ID)
+	if l.MetaStatus != MetaPending || l.MetaFailures != 0 || l.MetaError != "" || !l.MetaCheckedAt.IsZero() {
+		t.Errorf("state after new URL: %+v", l)
+	}
+
+	// Clearing a fetched title requeues a checked link.
+	h, _ := s.LinkByID(ctx, half.ID)
+	h.Title = ""
+	s.UpdateLink(ctx, h)
+	if got := fmt.Sprint(next(now)); got != fmt.Sprint([]int64{half.ID, old.ID}) {
+		t.Errorf("after clearing a title: %v", got)
 	}
 }

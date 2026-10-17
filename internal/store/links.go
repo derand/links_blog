@@ -23,7 +23,24 @@ type Link struct {
 	Source          string
 	SourceRef       string // empty means none
 	Tags            []string
+
+	// Fetching page metadata, see NextForMetadata.
+	MetaStatus    MetaStatus
+	MetaCheckedAt time.Time // zero: never checked
+	MetaError     string    // why the last check failed
+	MetaFailures  int       // failed checks in a row
 }
+
+// MetaStatus is the outcome of the last metadata check of a link.
+type MetaStatus string
+
+const (
+	MetaPending MetaStatus = ""        // not checked yet
+	MetaOK      MetaStatus = "ok"      // fetched, maybe with nothing to take
+	MetaBlocked MetaStatus = "blocked" // a bot check or login wall instead of the page: not retried
+	MetaDead    MetaStatus = "dead"    // gone: 404, unknown host, broken certificate; not retried
+	MetaError   MetaStatus = "error"   // failed for a reason worth a retry
+)
 
 // InsertLinks inserts links with their tags in a single transaction and sets their IDs.
 func (s *Store) InsertLinks(ctx context.Context, links []*Link) error {
@@ -184,7 +201,8 @@ func (s *Store) LinkByID(ctx context.Context, id int64) (*Link, error) {
 // UpdateLink saves the editable fields of the link l.ID: URL, texts, day,
 // visibility and tags; created_at and the source stay as they were. If another
 // link already has l.URLNorm, nothing changes and that link is returned with
-// DupURL. Tags take existing spellings as in AddLink.
+// DupURL. Tags take existing spellings as in AddLink. A new URL or a cleared
+// title or site description puts the link back in the metadata queue.
 func (s *Store) UpdateLink(ctx context.Context, l *Link) (*Link, Dup, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -203,11 +221,17 @@ func (s *Store) UpdateLink(ctx context.Context, l *Link) (*Link, Dup, error) {
 		return nil, NotDup, err
 	}
 
+	// SET expressions see the old values of the row.
+	const refetch = `url_norm <> ?2 OR title <> '' AND ?4 = '' OR site_description <> '' AND ?5 = ''`
 	res, err := tx.ExecContext(ctx, `
 		UPDATE links
-		   SET url = ?, url_norm = ?, description = ?, title = ?, site_description = ?,
-		       day = ?, hidden = ?, updated_at = ?
-		 WHERE id = ?`,
+		   SET meta_status = CASE WHEN `+refetch+` THEN '' ELSE meta_status END,
+		       meta_checked_at = CASE WHEN `+refetch+` THEN 0 ELSE meta_checked_at END,
+		       meta_error = CASE WHEN `+refetch+` THEN '' ELSE meta_error END,
+		       meta_failures = CASE WHEN `+refetch+` THEN 0 ELSE meta_failures END,
+		       url = ?1, url_norm = ?2, description = ?3, title = ?4, site_description = ?5,
+		       day = ?6, hidden = ?7, updated_at = ?8
+		 WHERE id = ?9`,
 		l.URL, l.URLNorm, l.Description, l.Title, l.SiteDescription, l.Day, l.Hidden, time.Now().Unix(), l.ID)
 	if err != nil {
 		return nil, NotDup, err
@@ -294,4 +318,54 @@ func (s *Store) FillMetadata(ctx context.Context, id int64, title, siteDescripti
 
 func likeEscape(s string) string {
 	return strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(s)
+}
+
+// MetaRetries is how many failed metadata checks in a row a link gets when
+// the failures are worth a retry.
+const MetaRetries = 3
+
+// NextForMetadata returns up to limit links whose title or site description
+// is empty and that are due for a metadata check. Links never checked come
+// first, newest first; one with MetaError is retried after failures² hours,
+// up to MetaRetries checks.
+func (s *Store) NextForMetadata(ctx context.Context, now time.Time, limit int) ([]*Link, error) {
+	return s.queryLinks(ctx, `
+		WHERE (l.title = '' OR l.site_description = '')
+		  AND (l.meta_status = ''
+		       OR l.meta_status = 'error' AND l.meta_failures < ?
+		          AND l.meta_checked_at <= ? - 3600 * l.meta_failures * l.meta_failures)
+		ORDER BY l.meta_status = '' DESC, l.id DESC
+		LIMIT ?`, MetaRetries, now.Unix(), limit)
+}
+
+// MetaResult is the outcome of a metadata check.
+type MetaResult struct {
+	Status          MetaStatus
+	Title           string // with MetaOK
+	SiteDescription string
+	Error           string // otherwise
+}
+
+// SaveMetadata records a metadata check of the link: MetaOK fills the title
+// and site description where they are empty, MetaError counts a failure.
+func (s *Store) SaveMetadata(ctx context.Context, id int64, r MetaResult, now time.Time) error {
+	if r.Status == MetaOK {
+		_, err := s.db.ExecContext(ctx, `
+			UPDATE links
+			   SET title = CASE WHEN title = '' THEN ?1 ELSE title END,
+			       site_description = CASE WHEN site_description = '' THEN ?2 ELSE site_description END,
+			       updated_at = CASE WHEN title = '' AND ?1 <> '' OR site_description = '' AND ?2 <> ''
+			                    THEN ?3 ELSE updated_at END,
+			       meta_status = 'ok', meta_checked_at = ?3, meta_error = '', meta_failures = 0
+			 WHERE id = ?4`,
+			r.Title, r.SiteDescription, now.Unix(), id)
+		return err
+	}
+	_, err := s.db.ExecContext(ctx, `
+		UPDATE links
+		   SET meta_status = ?1, meta_checked_at = ?2, meta_error = ?3,
+		       meta_failures = CASE WHEN ?1 = 'error' THEN meta_failures + 1 ELSE meta_failures END
+		 WHERE id = ?4`,
+		r.Status, now.Unix(), r.Error, id)
+	return err
 }

@@ -41,6 +41,7 @@ type editPage struct {
 	ID               int64
 	Created, Updated string
 	Source           string
+	Meta             string // state of fetching the page's metadata
 }
 
 // requireUser answers 403 to anyone but the signed-in author.
@@ -166,7 +167,26 @@ func (s *Server) newEditPage(r *http.Request, l *store.Link) editPage {
 		Created: l.CreatedAt.In(s.loc).Format(layout),
 		Updated: l.UpdatedAt.In(s.loc).Format(layout),
 		Source:  l.Source,
+		Meta:    s.metaState(l),
 	}
+}
+
+func (s *Server) metaState(l *store.Link) string {
+	when := l.MetaCheckedAt.In(s.loc).Format("2006-01-02 15:04")
+	switch l.MetaStatus {
+	case store.MetaPending:
+		if l.Title != "" && l.SiteDescription != "" {
+			return ""
+		}
+		return "Page metadata: waiting."
+	case store.MetaOK:
+		return "Page metadata: fetched " + when + "."
+	case store.MetaBlocked:
+		return "Page metadata: the site shows a guard instead of the page (" + when + ", " + l.MetaError + "); not retried."
+	case store.MetaDead:
+		return "Page metadata: the page is gone (" + when + ", " + l.MetaError + "); not retried."
+	}
+	return fmt.Sprintf("Page metadata: failed %d time(s), last %s: %s.", l.MetaFailures, when, l.MetaError)
 }
 
 func (s *Server) editPage(w http.ResponseWriter, r *http.Request) {

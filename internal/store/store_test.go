@@ -30,8 +30,8 @@ func TestMigrateIsIdempotent(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if v != 2 {
-			t.Errorf("open #%d: schema version = %d, want 2", i+1, v)
+		if v != 3 {
+			t.Errorf("open #%d: schema version = %d, want 3", i+1, v)
 		}
 		s.Close()
 	}

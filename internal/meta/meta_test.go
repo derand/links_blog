@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/netip"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -34,8 +35,36 @@ func TestParse(t *testing.T) {
 		{"svg title in body ignored", `<body><svg><title>icon</title></svg>`, Metadata{}},
 		{"long", `<title>` + strings.Repeat("я", 400) + `</title>`, Metadata{strings.Repeat("я", 299) + "…", ""}},
 	} {
-		if got := parse(strings.NewReader(tc.page)); got != tc.want {
-			t.Errorf("%s: got %+v, want %+v", tc.name, got, tc.want)
+		if got, err := parse(strings.NewReader(tc.page)).metadata(nil); err != nil || got != tc.want {
+			t.Errorf("%s: got %+v, %v, want %+v", tc.name, got, err, tc.want)
+		}
+	}
+}
+
+func TestGuardTitles(t *testing.T) {
+	for _, tc := range []struct {
+		url, page string
+		want      string // title, or "blocked"
+	}{
+		{"https://www.reddit.com/r/flask/comments/1/x/", `<title>Reddit</title>`, "blocked"},
+		{"https://www.facebook.com/permalink.php?story_fbid=1", `<title>Facebook</title>`, "blocked"},
+		{"https://www.youtube.com/watch?v=x", `<title> - YouTube</title>`, "blocked"},
+		{"https://arhivach.ng/thread/1/", `<title>arhivach.ng</title>`, "blocked"},
+		{"https://example.com/a", `<title>Just a moment...</title>`, "blocked"},
+		{"https://example.com/", `<title>Checking you are not a bot</title>`, "blocked"},
+		// The site's name is fine on its home page, and a better title wins.
+		{"https://listen.moe/", `<title>LISTEN.moe</title>`, "LISTEN.moe"},
+		{"https://help.ubuntu.ru/wiki/x", `<meta property="og:title" content="Ubuntu"><title>Настройка сети</title>`, "Настройка сети"},
+		{"https://www.reddit.com/r/x/comments/1/y/", `<title>How to use Reddit</title>`, "How to use Reddit"},
+	} {
+		u, _ := url.Parse(tc.url)
+		m, err := parse(strings.NewReader(tc.page)).metadata(u)
+		var be *BlockedError
+		switch {
+		case tc.want == "blocked" && !errors.As(err, &be):
+			t.Errorf("%s: %+v, %v; want blocked", tc.url, m, err)
+		case tc.want != "blocked" && (err != nil || m.Title != tc.want):
+			t.Errorf("%s: %+v, %v; want %q", tc.url, m, err, tc.want)
 		}
 	}
 }
@@ -75,6 +104,22 @@ func TestFetch(t *testing.T) {
 	mux.HandleFunc("/loop", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/loop", http.StatusFound)
 	})
+	mux.HandleFunc("/challenge", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cf-Mitigated", "challenge")
+		w.WriteHeader(http.StatusForbidden)
+	})
+	mux.HandleFunc("/forbidden", func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "no", http.StatusForbidden)
+	})
+	mux.HandleFunc("/busy", func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "later", http.StatusTooManyRequests)
+	})
+	mux.HandleFunc("/post/1", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/accounts/login/?next=/post/1", http.StatusFound)
+	})
+	mux.HandleFunc("/accounts/login/", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`<title>Log in</title>`))
+	})
 	mux.HandleFunc("/to-ftp", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "ftp://example.com/", http.StatusFound)
 	})
@@ -98,13 +143,29 @@ func TestFetch(t *testing.T) {
 	}
 
 	var se *StatusError
-	if _, err := f.Fetch(ctx, srv.URL+"/missing"); !errors.As(err, &se) || se.Code != 404 {
+	if _, err := f.Fetch(ctx, srv.URL+"/missing"); !errors.As(err, &se) || se.Code != 404 || !Permanent(err) {
 		t.Errorf("404: %v", err)
 	}
-	for _, path := range []string{"/slow", "/loop", "/to-ftp"} {
-		if _, err := f.Fetch(ctx, srv.URL+path); err == nil {
-			t.Errorf("%s: no error", path)
+	if _, err := f.Fetch(ctx, srv.URL+"/busy"); !errors.As(err, &se) || se.Code != 429 || Permanent(err) {
+		t.Errorf("429: %v", err)
+	}
+	for _, path := range []string{"/challenge", "/forbidden", "/post/1"} {
+		var be *BlockedError
+		if _, err := f.Fetch(ctx, srv.URL+path); !errors.As(err, &be) || !Permanent(err) {
+			t.Errorf("%s: %v, want BlockedError", path, err)
 		}
+	}
+	// A login page asked for directly is just a page.
+	if m, err := f.Fetch(ctx, srv.URL+"/accounts/login/"); err != nil || m.Title != "Log in" {
+		t.Errorf("login page: %+v, %v", m, err)
+	}
+	for path, permanent := range map[string]bool{"/slow": false, "/loop": false, "/to-ftp": true} {
+		if _, err := f.Fetch(ctx, srv.URL+path); err == nil || Permanent(err) != permanent {
+			t.Errorf("%s: %v, permanent %v", path, err, Permanent(err))
+		}
+	}
+	if _, err := f.Fetch(ctx, "https://no-such-host.invalid/"); err == nil || !Permanent(err) {
+		t.Errorf("unknown host: %v, permanent %v", err, Permanent(err))
 	}
 	if _, err := f.Fetch(ctx, "file:///etc/passwd"); err == nil {
 		t.Error("file: no error")
@@ -113,7 +174,7 @@ func TestFetch(t *testing.T) {
 	// The real fetcher refuses the local test server, directly and by name.
 	real := New(time.Second)
 	for _, u := range []string{srv.URL + "/page", strings.Replace(srv.URL, "127.0.0.1", "localhost", 1) + "/page"} {
-		if _, err := real.Fetch(ctx, u); !errors.Is(err, ErrBlockedAddress) {
+		if _, err := real.Fetch(ctx, u); !errors.Is(err, ErrBlockedAddress) || !Permanent(err) {
 			t.Errorf("%s: %v, want ErrBlockedAddress", u, err)
 		}
 	}
