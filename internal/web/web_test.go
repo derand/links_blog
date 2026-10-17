@@ -307,3 +307,83 @@ func TestAddForm(t *testing.T) {
 		r.has(t, fmt.Sprint(f), `class="form-message error"`)
 	}
 }
+
+func TestEditAndDelete(t *testing.T) {
+	s := newSite(t)
+
+	s.get("/", false).hasNot(t, "/ signed out", `class="edit"`)
+	r := s.get("/2020-01-05.html", true)
+	i := strings.Index(r.body, `<a class="edit" href="/edit/`)
+	if i < 0 {
+		t.Fatal("no edit link for the author")
+	}
+	edit := r.body[i+len(`<a class="edit" href="`):]
+	edit = edit[:strings.IndexByte(edit, '"')]
+	id := strings.TrimPrefix(edit, "/edit/")
+
+	for _, p := range []string{"/edit/99999", "/edit/abc"} {
+		if r := s.get(p, true); r.code != 404 {
+			t.Errorf("%s: %d", p, r.code)
+		}
+	}
+	if r := s.get(edit, false); r.code != http.StatusForbidden {
+		t.Errorf("GET %s signed out: %d", edit, r.code)
+	}
+	r = s.get(edit, true)
+	r.has(t, "edit page", `action="`+edit+`"`, `value="https://site5.example.com/page"`, ">Visible post 5</textarea>",
+		`name="tags" value="common"`, `type="date" value="2020-01-05" required`, `name="title"`, ">Save</button>",
+		`action="/delete/`+id+`"`)
+
+	form := url.Values{"url": {"https://site5.example.com/other"}, "description": {"Edited post"},
+		"title": {"Page T"}, "tags": {"common, more"}, "day": {"2020-01-06"}}
+	if r := s.post(edit, form, false); r.code != http.StatusForbidden {
+		t.Errorf("POST %s signed out: %d", edit, r.code)
+	}
+	r = s.post(edit, form, true)
+	if loc := r.hdr.Get("Location"); r.code != http.StatusSeeOther || loc != "/2020-01-06.html#link-"+id {
+		t.Fatalf("POST %s: %d -> %q", edit, r.code, loc)
+	}
+	if r := s.get("/2020-01-05.html", false); r.code != 404 {
+		t.Errorf("old day still has the post: %d", r.code)
+	}
+	s.get("/2020-01-06.html", false).has(t, "moved", "Edited post", `href="https://site5.example.com/other"`, ">more</a>")
+	s.get("/search?q=edited", false).has(t, "search", "Search results: 1")
+
+	// Taking another link's URL; a missing day.
+	s.post("/add", url.Values{"url": {"https://taken.example.org"}, "description": {"Taken one"}}, true)
+	r = s.post(edit, url.Values{"url": {"www.taken.example.org/"}, "day": {"2020-01-06"}}, true)
+	if r.code != http.StatusConflict {
+		t.Errorf("taken URL: %d", r.code)
+	}
+	r.has(t, "taken URL", "Already posted:", "Taken one", `value="www.taken.example.org/"`)
+	if r := s.post(edit, url.Values{"url": {"site5.example.com"}}, true); r.code != http.StatusBadRequest {
+		t.Errorf("no day: %d", r.code)
+	}
+
+	del := "/delete/" + id
+	if r := s.post(del, url.Values{"confirm": {"on"}}, false); r.code != http.StatusForbidden {
+		t.Errorf("delete signed out: %d", r.code)
+	}
+	if r := s.post(del, nil, true); r.code != http.StatusBadRequest {
+		t.Errorf("delete without confirm: %d", r.code)
+	}
+	r = s.post(del, url.Values{"confirm": {"on"}}, true)
+	if loc := r.hdr.Get("Location"); r.code != http.StatusSeeOther || loc != "/2020-01-06.html" {
+		t.Errorf("delete: %d -> %q", r.code, loc)
+	}
+	s.get("/2020-01-06.html", true).hasNot(t, "deleted", "Edited post")
+	if r := s.post(del, url.Values{"confirm": {"on"}}, true); r.code != 404 {
+		t.Errorf("delete twice: %d", r.code)
+	}
+	s.get("/search?q=edited", true).has(t, "search after delete", "Search results: 0")
+
+	// The last link of a day: back to the feed.
+	r = s.get("/2019-12-31.html", true)
+	i = strings.Index(r.body, `href="/edit/`)
+	alone := r.body[i+len(`href="/edit/`):]
+	alone = alone[:strings.IndexByte(alone, '"')]
+	r = s.post("/delete/"+alone, url.Values{"confirm": {"on"}}, true)
+	if loc := r.hdr.Get("Location"); loc != "/" {
+		t.Errorf("delete the last link of a day: -> %q", loc)
+	}
+}

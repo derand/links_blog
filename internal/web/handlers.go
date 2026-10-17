@@ -21,9 +21,10 @@ type postView struct {
 	Tags            []string
 	Hidden          bool
 	ShowDate        bool
+	Editable        bool
 }
 
-func newPostView(l *store.Link, showDate bool) postView {
+func newPostView(l *store.Link, showDate, editable bool) postView {
 	host := l.URL
 	if u, err := url.Parse(l.URL); err == nil && u.Host != "" {
 		host = u.Host
@@ -32,7 +33,8 @@ func newPostView(l *store.Link, showDate bool) postView {
 	if text == "" {
 		text = l.Title
 	}
-	return postView{ID: l.ID, URL: l.URL, Host: host, Text: text, Day: l.Day, Tags: l.Tags, Hidden: l.Hidden, ShowDate: showDate}
+	return postView{ID: l.ID, URL: l.URL, Host: host, Text: text, Day: l.Day, Tags: l.Tags, Hidden: l.Hidden,
+		ShowDate: showDate, Editable: editable}
 }
 
 type dayView struct {
@@ -40,7 +42,7 @@ type dayView struct {
 	Posts      []postView
 }
 
-func groupByDay(ls []*store.Link) []dayView {
+func groupByDay(ls []*store.Link, editable bool) []dayView {
 	var days []dayView
 	for _, l := range ls {
 		if len(days) == 0 || days[len(days)-1].Day != l.Day {
@@ -51,7 +53,7 @@ func groupByDay(ls []*store.Link) []dayView {
 			days = append(days, dayView{Day: l.Day, Human: human})
 		}
 		d := &days[len(days)-1]
-		d.Posts = append(d.Posts, newPostView(l, false))
+		d.Posts = append(d.Posts, newPostView(l, false, editable))
 	}
 	return days
 }
@@ -61,7 +63,7 @@ type indexPage struct {
 	Days       []dayView
 	OneDay     bool
 	Pagination []pageLink
-	AddForm    *addForm // for the author
+	AddForm    *linkForm // for the author
 }
 
 // pageParam returns the zero-based page from the 1-based ?p= parameter.
@@ -96,9 +98,9 @@ func (s *Server) index(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, err)
 		return
 	}
-	data := indexPage{page: s.page(r, ""), Days: groupByDay(ls)}
+	data := indexPage{page: s.page(r, ""), Days: groupByDay(ls, withHidden)}
 	if withHidden {
-		data.AddForm = &addForm{}
+		data.AddForm = newAddForm()
 	}
 	if pages > 1 {
 		data.Pagination = pagination(pg, pages, 2, func(i int) string {
@@ -136,10 +138,12 @@ func (s *Server) day(w http.ResponseWriter, r *http.Request, day string) {
 		s.error(w, r, http.StatusNotFound, "No links on this day.")
 		return
 	}
-	days := groupByDay(ls)
+	signedIn := auth.User(r.Context()) != ""
+	days := groupByDay(ls, signedIn)
 	data := indexPage{page: s.page(r, days[0].Human), Days: days, OneDay: true}
-	if auth.User(r.Context()) != "" {
-		data.AddForm = &addForm{Day: day}
+	if signedIn {
+		data.AddForm = newAddForm()
+		data.AddForm.Day = day
 	}
 	s.render(w, http.StatusOK, "index", data)
 }
@@ -179,7 +183,7 @@ func (s *Server) search(w http.ResponseWriter, r *http.Request) {
 	}
 	data.Searched, data.Total = true, total
 	for _, l := range ls {
-		data.Posts = append(data.Posts, newPostView(l, true))
+		data.Posts = append(data.Posts, newPostView(l, true, auth.User(r.Context()) != ""))
 	}
 	if pages := pageCount(total, resultsPerPage); pages > 1 {
 		base := "/search?q=" + url.QueryEscape(data.Query)

@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -62,7 +63,11 @@ func insertLink(ctx context.Context, tx *sql.Tx, l *Link) error {
 	if l.ID, err = res.LastInsertId(); err != nil {
 		return err
 	}
-	for i, name := range l.Tags {
+	return insertTags(ctx, tx, l.ID, l.Tags)
+}
+
+func insertTags(ctx context.Context, tx *sql.Tx, linkID int64, tags []string) error {
+	for i, name := range tags {
 		var tagID int64
 		err := tx.QueryRowContext(ctx, `
 			INSERT INTO tags (name) VALUES (?)
@@ -73,7 +78,7 @@ func insertLink(ctx context.Context, tx *sql.Tx, l *Link) error {
 		}
 		if _, err := tx.ExecContext(ctx,
 			`INSERT OR IGNORE INTO link_tags (link_id, tag_id, pos) VALUES (?, ?, ?)`,
-			l.ID, tagID, i); err != nil {
+			linkID, tagID, i); err != nil {
 			return err
 		}
 	}
@@ -129,22 +134,14 @@ func (s *Store) AddLink(ctx context.Context, l *Link) (*Link, Dup, error) {
 	switch {
 	case err == nil:
 		tx.Rollback()
-		existing, err := s.linkByID(ctx, id)
+		existing, err := s.LinkByID(ctx, id)
 		return existing, dup, err
 	case err != sql.ErrNoRows:
 		return nil, NotDup, err
 	}
 
-	for i, name := range l.Tags {
-		var known string
-		err := tx.QueryRowContext(ctx, `SELECT name FROM tags WHERE name = ? COLLATE NOCASE ORDER BY id LIMIT 1`,
-			name).Scan(&known)
-		switch {
-		case err == nil:
-			l.Tags[i] = known
-		case err != sql.ErrNoRows:
-			return nil, NotDup, err
-		}
+	if err := knownTagSpelling(ctx, tx, l.Tags); err != nil {
+		return nil, NotDup, err
 	}
 	if err := insertLink(ctx, tx, l); err != nil {
 		return nil, NotDup, err
@@ -152,15 +149,123 @@ func (s *Store) AddLink(ctx context.Context, l *Link) (*Link, Dup, error) {
 	return l, NotDup, tx.Commit()
 }
 
-func (s *Store) linkByID(ctx context.Context, id int64) (*Link, error) {
+// knownTagSpelling replaces tags that differ from existing ones only in ASCII
+// case with the existing spelling.
+func knownTagSpelling(ctx context.Context, tx *sql.Tx, tags []string) error {
+	for i, name := range tags {
+		var known string
+		err := tx.QueryRowContext(ctx, `SELECT name FROM tags WHERE name = ? COLLATE NOCASE ORDER BY id LIMIT 1`,
+			name).Scan(&known)
+		switch {
+		case err == nil:
+			tags[i] = known
+		case err != sql.ErrNoRows:
+			return err
+		}
+	}
+	return nil
+}
+
+// ErrNotFound is returned when there is no link with the given ID.
+var ErrNotFound = errors.New("link not found")
+
+// LinkByID returns the link with the given ID, or ErrNotFound.
+func (s *Store) LinkByID(ctx context.Context, id int64) (*Link, error) {
 	ls, err := s.queryLinks(ctx, `WHERE l.id = ?`, id)
 	if err != nil {
 		return nil, err
 	}
 	if len(ls) == 0 {
-		return nil, sql.ErrNoRows
+		return nil, ErrNotFound
 	}
 	return ls[0], nil
+}
+
+// UpdateLink saves the editable fields of the link l.ID: URL, texts, day,
+// visibility and tags; created_at and the source stay as they were. If another
+// link already has l.URLNorm, nothing changes and that link is returned with
+// DupURL. Tags take existing spellings as in AddLink.
+func (s *Store) UpdateLink(ctx context.Context, l *Link) (*Link, Dup, error) {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, NotDup, err
+	}
+	defer tx.Rollback()
+
+	var id int64
+	err = tx.QueryRowContext(ctx, `SELECT id FROM links WHERE url_norm = ? AND id <> ?`, l.URLNorm, l.ID).Scan(&id)
+	switch {
+	case err == nil:
+		tx.Rollback()
+		existing, err := s.LinkByID(ctx, id)
+		return existing, DupURL, err
+	case err != sql.ErrNoRows:
+		return nil, NotDup, err
+	}
+
+	res, err := tx.ExecContext(ctx, `
+		UPDATE links
+		   SET url = ?, url_norm = ?, description = ?, title = ?, site_description = ?,
+		       day = ?, hidden = ?, updated_at = ?
+		 WHERE id = ?`,
+		l.URL, l.URLNorm, l.Description, l.Title, l.SiteDescription, l.Day, l.Hidden, time.Now().Unix(), l.ID)
+	if err != nil {
+		return nil, NotDup, err
+	}
+	if n, err := res.RowsAffected(); err != nil {
+		return nil, NotDup, err
+	} else if n == 0 {
+		return nil, NotDup, ErrNotFound
+	}
+
+	if err := knownTagSpelling(ctx, tx, l.Tags); err != nil {
+		return nil, NotDup, err
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM link_tags WHERE link_id = ?`, l.ID); err != nil {
+		return nil, NotDup, err
+	}
+	if err := insertTags(ctx, tx, l.ID, l.Tags); err != nil {
+		return nil, NotDup, err
+	}
+	if err := dropUnusedTags(ctx, tx); err != nil {
+		return nil, NotDup, err
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, NotDup, err
+	}
+	saved, err := s.LinkByID(ctx, l.ID)
+	return saved, NotDup, err
+}
+
+// DeleteLink deletes the link with the given ID and returns it.
+func (s *Store) DeleteLink(ctx context.Context, id int64) (*Link, error) {
+	l, err := s.LinkByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+	res, err := tx.ExecContext(ctx, `DELETE FROM links WHERE id = ?`, id)
+	if err != nil {
+		return nil, err
+	}
+	if n, err := res.RowsAffected(); err != nil {
+		return nil, err
+	} else if n == 0 {
+		return nil, ErrNotFound
+	}
+	if err := dropUnusedTags(ctx, tx); err != nil {
+		return nil, err
+	}
+	return l, tx.Commit()
+}
+
+func dropUnusedTags(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `DELETE FROM tags WHERE id NOT IN (SELECT tag_id FROM link_tags)`)
+	return err
 }
 
 // LinksByMessage returns the links added from one chat message: their

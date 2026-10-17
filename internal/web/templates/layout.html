@@ -37,29 +37,40 @@
   {{- if .ShowDate}}<span class="date"><a href="/{{.Day}}.html">{{.Day}}</a></span> {{end -}}
   <a class="link" href="{{.URL}}">{{.Host}}</a>: <span class="description">{{.Text}}</span>
   {{- range .Tags}} <a class="tag" href="/search?q={{tagQuery .}}">{{.}}</a>{{end -}}
+  {{- if .Editable}} <a class="edit" href="/edit/{{.ID}}" title="Edit">edit</a>{{end -}}
 </div>
 {{- end}}
 
-{{define "add-form" -}}
-<form class="add-form" method="post" action="/add">
+{{define "link-form" -}}
+<form class="link-form" method="post" action="{{.Action}}">
   {{- with .Error}}
   <p class="form-message error">{{.}}</p>
   {{- end}}
   {{- with .Existing}}
   <article>{{template "post" .}}</article>
   {{- end}}
-  <label for="add-url">URL</label>
-  <input id="add-url" name="url" value="{{.URL}}" inputmode="url" autocomplete="off" required>
-  <label for="add-description">Description</label>
-  <textarea id="add-description" name="description" rows="2">{{.Description}}</textarea>
-  <label for="add-tags">Tags</label>
-  <input id="add-tags" name="tags" value="{{.Tags}}" placeholder="comma separated" autocomplete="off">
-  <label for="add-day">Day</label>
-  <span class="form-row"><input id="add-day" name="day" type="date" value="{{.Day}}"> <span class="form-hint">empty: today</span></span>
-  <label for="add-hidden">Hidden</label>
-  <span class="form-row"><input id="add-hidden" name="hidden" type="checkbox"{{if .Hidden}} checked{{end}}></span>
+  <label for="form-url">URL</label>
+  <input id="form-url" name="url" value="{{.URL}}" inputmode="url" autocomplete="off" required>
+  <label for="form-description">Description</label>
+  <textarea id="form-description" name="description" rows="2">{{.Description}}</textarea>
+  {{- if .Edit}}
+  <label for="form-title">Page title</label>
+  <input id="form-title" name="title" value="{{.Title}}" autocomplete="off">
+  <label for="form-site-description">Page description</label>
+  <textarea id="form-site-description" name="site_description" rows="2">{{.SiteDescription}}</textarea>
+  {{- end}}
+  <label for="form-tags">Tags</label>
+  <input id="form-tags" name="tags" value="{{.Tags}}" placeholder="comma separated" autocomplete="off">
+  <label for="form-day">Day</label>
+  {{- if .Edit}}
+  <span class="form-row"><input id="form-day" name="day" type="date" value="{{.Day}}" required></span>
+  {{- else}}
+  <span class="form-row"><input id="form-day" name="day" type="date" value="{{.Day}}"> <span class="form-hint">empty: today</span></span>
+  {{- end}}
+  <label for="form-hidden">Hidden</label>
+  <span class="form-row"><input id="form-hidden" name="hidden" type="checkbox"{{if .Hidden}} checked{{end}}></span>
   <span></span>
-  <span class="form-row"><button type="submit">Add link</button></span>
+  <span class="form-row"><button type="submit">{{.Submit}}</button></span>
 </form>
 {{- end}}
 

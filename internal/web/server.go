@@ -77,7 +77,7 @@ func New(st *store.Store, ls service.LinkService, a *auth.Auth, loc *time.Locati
 		},
 	}
 	s.pages = map[string]*template.Template{}
-	for _, name := range []string{"index", "search", "add", "error"} {
+	for _, name := range []string{"index", "search", "add", "edit", "error"} {
 		t, err := template.New(name).Funcs(funcs).ParseFS(templatesFS, "templates/layout.html", "templates/"+name+".html")
 		if err != nil {
 			return nil, err
@@ -92,6 +92,9 @@ func New(st *store.Store, ls service.LinkService, a *auth.Auth, loc *time.Locati
 	mux.HandleFunc("GET /health", s.health)
 	mux.HandleFunc("GET /add", s.addPage)
 	mux.HandleFunc("POST /add", s.add)
+	mux.HandleFunc("GET /edit/{id}", s.editPage)
+	mux.HandleFunc("POST /edit/{id}", s.edit)
+	mux.HandleFunc("POST /delete/{id}", s.delete)
 	mux.Handle("GET /static/", http.StripPrefix("/static/", staticHandler(http.FileServerFS(static))))
 	a.Routes(mux)
 

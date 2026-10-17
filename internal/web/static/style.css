@@ -215,7 +215,7 @@ article {
 .search-hint code { font-size: 110%; }
 .error { color: var(--error); }
 
-/* Add form */
+/* Add and edit forms */
 
 .add-link { margin: 0 0 1em; }
 .add-link summary {
@@ -228,7 +228,7 @@ article {
   font-weight: normal;
   margin: 12px 0;
 }
-.add-form {
+.link-form {
   display: grid;
   grid-template-columns: max-content minmax(0, 1fr);
   gap: 6px 10px;
@@ -236,9 +236,9 @@ article {
   max-width: 700px;
   margin: 8px 0;
 }
-.add-form > label { text-align: right; }
-.add-form .form-message, .add-form article { grid-column: 1 / -1; margin: 0; }
-.add-form input:not([type=checkbox]), .add-form textarea {
+.link-form > label { text-align: right; }
+.link-form .form-message, .link-form article { grid-column: 1 / -1; margin: 0; }
+.link-form input:not([type=checkbox]), .link-form textarea {
   width: 100%;
   padding: 5px;
   font: inherit;
@@ -247,14 +247,24 @@ article {
   border: 1px solid var(--input-border);
   border-radius: 3px;
 }
-.add-form textarea { resize: vertical; }
-.add-form .form-row { display: flex; align-items: center; gap: 8px; }
-.add-form .form-row input[type=date] { width: auto; }
-.add-form button { min-width: 70px; font: inherit; }
+.link-form textarea { resize: vertical; }
+.link-form .form-row { display: flex; align-items: center; gap: 8px; }
+.link-form .form-row input[type=date] { width: auto; }
+.link-form button { min-width: 70px; font: inherit; }
 .form-hint { font-size: 70%; color: var(--muted); }
+.link-info { margin: 1.5em 0 0; }
+.delete-form { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 8px 0; }
+.delete-form button { font: inherit; }
+
+.edit, .edit:visited {
+  margin-left: 4px;
+  font-size: 12px;
+  color: var(--muted);
+  text-indent: 0;
+}
 @media (max-width: 600px) {
-  .add-form { grid-template-columns: minmax(0, 1fr); gap: 2px; }
-  .add-form > label { text-align: left; margin-top: 4px; }
+  .link-form { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+  .link-form > label { text-align: left; margin-top: 4px; }
 }
 
 /* Error pages */

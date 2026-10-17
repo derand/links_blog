@@ -16,8 +16,15 @@ import (
 // ErrInvalid marks errors caused by bad input rather than by the server.
 var ErrInvalid = errors.New("invalid link")
 
+// ErrNotFound is returned for an unknown link ID.
+var ErrNotFound = store.ErrNotFound
+
 type LinkService interface {
 	AddLink(ctx context.Context, in NewLink) (AddResult, error)
+	Link(ctx context.Context, id int64) (*store.Link, error)
+	UpdateLink(ctx context.Context, in LinkEdit) (AddResult, error)
+	// DeleteLink deletes a link and returns what it was.
+	DeleteLink(ctx context.Context, id int64) (*store.Link, error)
 	// MessageLinks returns the links added from a chat message, see store.LinksByMessage.
 	MessageLinks(ctx context.Context, source, messageRef string) ([]*store.Link, error)
 	// FillMetadata sets a link's title and site description where they are empty.
@@ -43,8 +50,20 @@ type NewLink struct {
 	SourceRef       string    // e.g. "channel_id:message_id"; unique within Source
 }
 
+// LinkEdit is the new state of an existing link's editable fields.
+type LinkEdit struct {
+	ID              int64
+	URL             string
+	Description     string
+	Title           string
+	SiteDescription string
+	Tags            []string
+	Hidden          bool
+	Day             string // YYYY-MM-DD
+}
+
 type AddResult struct {
-	Link      *store.Link // the added link, or the existing one if Dup != NotDup
+	Link      *store.Link // the added or saved link, or the existing one if Dup != NotDup
 	Duplicate store.Dup
 }
 
@@ -63,24 +82,20 @@ var _ LinkService = (*Service)(nil)
 
 // AddLink adds a link unless it is a duplicate by source reference or by URL.
 func (s *Service) AddLink(ctx context.Context, in NewLink) (AddResult, error) {
-	rawURL := strings.TrimSpace(in.URL)
-	norm, err := links.Normalize(rawURL)
+	rawURL, norm, err := checkURL(in.URL)
 	if err != nil {
-		return AddResult{}, fmt.Errorf("%w: %v", ErrInvalid, err)
-	}
-	if !strings.Contains(rawURL, "://") {
-		rawURL = "https://" + rawURL
+		return AddResult{}, err
 	}
 
 	at := in.At
 	if at.IsZero() {
 		at = s.now()
 	}
-	day := in.Day
+	day := strings.TrimSpace(in.Day)
 	if day == "" {
 		day = links.Day(at, s.loc)
-	} else if _, err := time.Parse(links.DayLayout, day); err != nil {
-		return AddResult{}, fmt.Errorf("%w: day %q is not YYYY-MM-DD", ErrInvalid, day)
+	} else if err := checkDay(day); err != nil {
+		return AddResult{}, err
 	}
 
 	l := &store.Link{
@@ -104,6 +119,63 @@ func (s *Service) AddLink(ctx context.Context, in NewLink) (AddResult, error) {
 		return AddResult{}, err
 	}
 	return AddResult{Link: got, Duplicate: dup}, nil
+}
+
+// UpdateLink saves an edited link unless its new URL is already taken by
+// another link; then the result holds that link with store.DupURL.
+func (s *Service) UpdateLink(ctx context.Context, in LinkEdit) (AddResult, error) {
+	rawURL, norm, err := checkURL(in.URL)
+	if err != nil {
+		return AddResult{}, err
+	}
+	day := strings.TrimSpace(in.Day)
+	if err := checkDay(day); err != nil {
+		return AddResult{}, err
+	}
+	got, dup, err := s.st.UpdateLink(ctx, &store.Link{
+		ID:              in.ID,
+		URL:             rawURL,
+		URLNorm:         norm,
+		Description:     strings.TrimSpace(in.Description),
+		Title:           strings.TrimSpace(in.Title),
+		SiteDescription: strings.TrimSpace(in.SiteDescription),
+		Day:             day,
+		Hidden:          in.Hidden,
+		Tags:            cleanTags(in.Tags),
+	})
+	if err != nil {
+		return AddResult{}, err
+	}
+	return AddResult{Link: got, Duplicate: dup}, nil
+}
+
+func (s *Service) Link(ctx context.Context, id int64) (*store.Link, error) {
+	return s.st.LinkByID(ctx, id)
+}
+
+func (s *Service) DeleteLink(ctx context.Context, id int64) (*store.Link, error) {
+	return s.st.DeleteLink(ctx, id)
+}
+
+// checkURL returns the URL to keep, with "https://" added if it has no
+// scheme, and its dedup key.
+func checkURL(raw string) (url, norm string, err error) {
+	url = strings.TrimSpace(raw)
+	norm, err = links.Normalize(url)
+	if err != nil {
+		return "", "", fmt.Errorf("%w: %v", ErrInvalid, err)
+	}
+	if !strings.Contains(url, "://") {
+		url = "https://" + url
+	}
+	return url, norm, nil
+}
+
+func checkDay(day string) error {
+	if _, err := time.Parse(links.DayLayout, day); err != nil {
+		return fmt.Errorf("%w: day %q is not YYYY-MM-DD", ErrInvalid, day)
+	}
+	return nil
 }
 
 // cleanTags trims tags and a leading "#", drops empty ones and repeats

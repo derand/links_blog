@@ -1,0 +1,9 @@
+{{define "content" -}}
+<h1 class="page-title">Edit link</h1>
+{{template "link-form" .Form}}
+<p class="form-hint link-info">Added {{.Created}}{{with .Source}} via {{.}}{{end}}{{if ne .Updated .Created}}, changed {{.Updated}}{{end}}.</p>
+<form class="delete-form" method="post" action="/delete/{{.ID}}">
+  <label><input name="confirm" type="checkbox" required> really delete</label>
+  <button type="submit">Delete link</button>
+</form>
+{{- end}}

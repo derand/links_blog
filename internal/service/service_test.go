@@ -146,3 +146,45 @@ func TestAddLinkInvalid(t *testing.T) {
 		}
 	}
 }
+
+func TestUpdateLink(t *testing.T) {
+	ctx := context.Background()
+	s, _ := newTest(t)
+	a, _ := s.AddLink(ctx, NewLink{URL: "a.example", Description: "A", Tags: []string{"x"}})
+	b, _ := s.AddLink(ctx, NewLink{URL: "b.example"})
+
+	res, err := s.UpdateLink(ctx, LinkEdit{ID: a.Link.ID, URL: " a2.example/p ", Description: " New ",
+		Title: " T ", Tags: []string{"#y", " y", "z"}, Hidden: true, Day: "2026-01-02"})
+	if err != nil || res.Duplicate != store.NotDup {
+		t.Fatalf("update: %v %v", res.Duplicate, err)
+	}
+	l := res.Link
+	if l.URL != "https://a2.example/p" || l.URLNorm != "a2.example/p" || l.Description != "New" || l.Title != "T" ||
+		!l.Hidden || l.Day != "2026-01-02" || !reflect.DeepEqual(l.Tags, []string{"y", "z"}) {
+		t.Errorf("updated: %+v", l)
+	}
+
+	res, err = s.UpdateLink(ctx, LinkEdit{ID: a.Link.ID, URL: "https://www.b.example/", Day: "2026-01-02"})
+	if err != nil || res.Duplicate != store.DupURL || res.Link.ID != b.Link.ID {
+		t.Errorf("taken URL: %v %v", res.Duplicate, err)
+	}
+
+	for _, in := range []LinkEdit{
+		{ID: a.Link.ID, URL: "", Day: "2026-01-02"},
+		{ID: a.Link.ID, URL: "a.example", Day: ""},
+	} {
+		if _, err := s.UpdateLink(ctx, in); !errors.Is(err, ErrInvalid) {
+			t.Errorf("%+v: err = %v, want ErrInvalid", in, err)
+		}
+	}
+	if _, err := s.UpdateLink(ctx, LinkEdit{ID: 999, URL: "c.example", Day: "2026-01-02"}); !errors.Is(err, ErrNotFound) {
+		t.Errorf("missing: %v", err)
+	}
+
+	if _, err := s.DeleteLink(ctx, a.Link.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Link(ctx, a.Link.ID); !errors.Is(err, ErrNotFound) {
+		t.Errorf("after delete: %v", err)
+	}
+}
