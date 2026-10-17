@@ -1,4 +1,10 @@
 {{define "content" -}}
+{{with .AddForm}}
+<details class="add-link">
+  <summary>Add link</summary>
+  {{template "add-form" .}}
+</details>
+{{end}}
 {{range .Days}}
 <section class="day">
   {{- if $.OneDay}}

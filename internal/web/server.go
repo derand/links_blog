@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/derand/links_blog/internal/auth"
+	"github.com/derand/links_blog/internal/service"
 	"github.com/derand/links_blog/internal/store"
 )
 
@@ -31,15 +32,17 @@ const (
 
 type Server struct {
 	store   *store.Store
+	links   service.LinkService
 	auth    *auth.Auth
 	loc     *time.Location
 	pages   map[string]*template.Template
 	version map[string]string // static file name -> content hash
 }
 
-// New returns the site's handler with all middleware applied.
-func New(st *store.Store, a *auth.Auth, loc *time.Location) (http.Handler, error) {
-	s := &Server{store: st, auth: a, loc: loc, version: map[string]string{}}
+// New returns the site's handler with all middleware applied. Pages read
+// from st; the author's changes go through ls.
+func New(st *store.Store, ls service.LinkService, a *auth.Auth, loc *time.Location) (http.Handler, error) {
+	s := &Server{store: st, links: ls, auth: a, loc: loc, version: map[string]string{}}
 
 	static, err := fs.Sub(staticFS, "static")
 	if err != nil {
@@ -74,7 +77,7 @@ func New(st *store.Store, a *auth.Auth, loc *time.Location) (http.Handler, error
 		},
 	}
 	s.pages = map[string]*template.Template{}
-	for _, name := range []string{"index", "search", "error"} {
+	for _, name := range []string{"index", "search", "add", "error"} {
 		t, err := template.New(name).Funcs(funcs).ParseFS(templatesFS, "templates/layout.html", "templates/"+name+".html")
 		if err != nil {
 			return nil, err
@@ -87,6 +90,8 @@ func New(st *store.Store, a *auth.Auth, loc *time.Location) (http.Handler, error
 	mux.HandleFunc("GET /{file}", s.file)
 	mux.HandleFunc("GET /search", s.search)
 	mux.HandleFunc("GET /health", s.health)
+	mux.HandleFunc("GET /add", s.addPage)
+	mux.HandleFunc("POST /add", s.add)
 	mux.Handle("GET /static/", http.StripPrefix("/static/", staticHandler(http.FileServerFS(static))))
 	a.Routes(mux)
 

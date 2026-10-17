@@ -102,12 +102,13 @@ Sign-in is disabled unless the base URL, admin emails and Google client are set.
 
 	zone, _ := time.Now().Zone()
 	slog.Info("time zone of the days", "zone", zone)
-	h, err := web.New(st, a, time.Local)
+	svc := service.New(st, time.Local)
+	h, err := web.New(st, svc, a, time.Local)
 	if err != nil {
 		return err
 	}
 	if token := os.Getenv("DISCORD_TOKEN"); token != "" {
-		startDiscord(ctx, token, service.New(st, time.Local))
+		startDiscord(ctx, token, svc)
 	}
 	srv := &http.Server{
 		Addr:              *addr,

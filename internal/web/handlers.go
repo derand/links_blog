@@ -15,6 +15,7 @@ import (
 )
 
 type postView struct {
+	ID              int64
 	URL, Host, Text string
 	Day             string
 	Tags            []string
@@ -31,7 +32,7 @@ func newPostView(l *store.Link, showDate bool) postView {
 	if text == "" {
 		text = l.Title
 	}
-	return postView{URL: l.URL, Host: host, Text: text, Day: l.Day, Tags: l.Tags, Hidden: l.Hidden, ShowDate: showDate}
+	return postView{ID: l.ID, URL: l.URL, Host: host, Text: text, Day: l.Day, Tags: l.Tags, Hidden: l.Hidden, ShowDate: showDate}
 }
 
 type dayView struct {
@@ -60,6 +61,7 @@ type indexPage struct {
 	Days       []dayView
 	OneDay     bool
 	Pagination []pageLink
+	AddForm    *addForm // for the author
 }
 
 // pageParam returns the zero-based page from the 1-based ?p= parameter.
@@ -95,6 +97,9 @@ func (s *Server) index(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	data := indexPage{page: s.page(r, ""), Days: groupByDay(ls)}
+	if withHidden {
+		data.AddForm = &addForm{}
+	}
 	if pages > 1 {
 		data.Pagination = pagination(pg, pages, 2, func(i int) string {
 			if i == 0 {
@@ -132,7 +137,11 @@ func (s *Server) day(w http.ResponseWriter, r *http.Request, day string) {
 		return
 	}
 	days := groupByDay(ls)
-	s.render(w, http.StatusOK, "index", indexPage{page: s.page(r, days[0].Human), Days: days, OneDay: true})
+	data := indexPage{page: s.page(r, days[0].Human), Days: days, OneDay: true}
+	if auth.User(r.Context()) != "" {
+		data.AddForm = &addForm{Day: day}
+	}
+	s.render(w, http.StatusOK, "index", data)
 }
 
 type searchPage struct {

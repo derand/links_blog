@@ -215,6 +215,48 @@ article {
 .search-hint code { font-size: 110%; }
 .error { color: var(--error); }
 
+/* Add form */
+
+.add-link { margin: 0 0 1em; }
+.add-link summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 80%;
+}
+.page-title {
+  font-size: 20px;
+  font-weight: normal;
+  margin: 12px 0;
+}
+.add-form {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 6px 10px;
+  align-items: center;
+  max-width: 700px;
+  margin: 8px 0;
+}
+.add-form > label { text-align: right; }
+.add-form .form-message, .add-form article { grid-column: 1 / -1; margin: 0; }
+.add-form input:not([type=checkbox]), .add-form textarea {
+  width: 100%;
+  padding: 5px;
+  font: inherit;
+  color: var(--text);
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: 3px;
+}
+.add-form textarea { resize: vertical; }
+.add-form .form-row { display: flex; align-items: center; gap: 8px; }
+.add-form .form-row input[type=date] { width: auto; }
+.add-form button { min-width: 70px; font: inherit; }
+.form-hint { font-size: 70%; color: var(--muted); }
+@media (max-width: 600px) {
+  .add-form { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+  .add-form > label { text-align: left; margin-top: 4px; }
+}
+
 /* Error pages */
 
 .error-page { text-align: center; padding: 3em 0; }

@@ -5,12 +5,14 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/derand/links_blog/internal/auth"
+	"github.com/derand/links_blog/internal/service"
 	"github.com/derand/links_blog/internal/store"
 )
 
@@ -53,7 +55,7 @@ func newSite(t *testing.T) *site {
 	if err != nil {
 		t.Fatal(err)
 	}
-	h, err := New(st, a, time.UTC)
+	h, err := New(st, service.New(st, time.UTC), a, time.UTC)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -240,4 +242,68 @@ func TestAuthRoutes(t *testing.T) {
 
 func urlq(s string) string {
 	return strings.NewReplacer(" ", "+", `"`, "%22", ":", "%3A").Replace(s)
+}
+
+func (s *site) post(path string, form url.Values, signedIn bool, hdr ...string) resp {
+	s.t.Helper()
+	req := httptest.NewRequest("POST", path, strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	for i := 0; i+1 < len(hdr); i += 2 {
+		req.Header.Set(hdr[i], hdr[i+1])
+	}
+	if signedIn {
+		req.AddCookie(s.auth.SessionCookie(admin))
+	}
+	rec := httptest.NewRecorder()
+	s.h.ServeHTTP(rec, req)
+	return resp{rec.Code, rec.Body.String(), rec.Header()}
+}
+
+func TestAddForm(t *testing.T) {
+	s := newSite(t)
+
+	s.get("/", false).hasNot(t, "/ signed out", `action="/add"`, "add link")
+	s.get("/", true).has(t, "/ signed in", `<details class="add-link">`, `action="/add"`, `name="day" type="date" value=""`, `href="/add"`)
+	s.get("/2020-01-05.html", true).has(t, "day", `name="day" type="date" value="2020-01-05"`)
+
+	if r := s.get("/add", false); r.code != http.StatusForbidden {
+		t.Errorf("GET /add signed out: %d", r.code)
+	}
+	r := s.get("/add?url=example.org/x&description=Hi+there", true)
+	r.has(t, "GET /add", `value="example.org/x"`, ">Hi there</textarea>")
+
+	form := url.Values{"url": {" example.org/new "}, "description": {"New <thing>"}, "tags": {"go, Common ,,go"},
+		"day": {"2020-01-05"}, "hidden": {"on"}}
+	if r := s.post("/add", form, false); r.code != http.StatusForbidden {
+		t.Errorf("POST /add signed out: %d", r.code)
+	}
+	if r := s.post("/add", form, true, "Sec-Fetch-Site", "cross-site"); r.code != http.StatusForbidden {
+		t.Errorf("POST /add cross-site: %d", r.code)
+	}
+
+	r = s.post("/add", form, true)
+	loc := r.hdr.Get("Location")
+	if r.code != http.StatusSeeOther || !strings.HasPrefix(loc, "/2020-01-05.html#link-") {
+		t.Fatalf("POST /add: %d -> %q", r.code, loc)
+	}
+	id := strings.TrimPrefix(loc, "/2020-01-05.html#")
+	day := s.get("/2020-01-05.html", true)
+	day.has(t, "added", `class="post hidden" id="`+id+`"`, `href="https://example.org/new">example.org</a>`,
+		"New &lt;thing&gt;", `href="/search?q=tag%3ago"`, `>common</a>`)
+	day.hasNot(t, "added", ">Common</a>")
+	s.get("/2020-01-05.html", false).hasNot(t, "hidden", "New &lt;thing&gt;")
+
+	r = s.post("/add", url.Values{"url": {"http://www.example.org/new/"}}, true)
+	if r.code != http.StatusConflict {
+		t.Errorf("duplicate: %d", r.code)
+	}
+	r.has(t, "duplicate", "Already posted:", `<a href="/2020-01-05.html">2020-01-05</a>`, `value="http://www.example.org/new/"`)
+
+	for _, f := range []url.Values{{"url": {""}}, {"url": {"ftp://example.org"}}, {"url": {"example.org/y"}, "day": {"2020-13-01"}}} {
+		r := s.post("/add", f, true)
+		if r.code != http.StatusBadRequest {
+			t.Errorf("%v: %d", f, r.code)
+		}
+		r.has(t, fmt.Sprint(f), `class="form-message error"`)
+	}
 }

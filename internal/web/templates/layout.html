@@ -26,18 +26,41 @@
 {{template "content" .}}
 </main>
 <footer class="site-footer">
-  <div class="container">© 2016–{{.Year}}{{with .User}} · {{.}} · <a href="/logout">log out</a>{{end}}</div>
+  <div class="container">© 2016–{{.Year}}{{with .User}} · {{.}} · <a href="/add">add link</a> · <a href="/logout">log out</a>{{end}}</div>
 </footer>
 </body>
 </html>
 {{- end}}
 
 {{define "post" -}}
-<div class="post{{if .Hidden}} hidden{{end}}">
+<div class="post{{if .Hidden}} hidden{{end}}" id="link-{{.ID}}">
   {{- if .ShowDate}}<span class="date"><a href="/{{.Day}}.html">{{.Day}}</a></span> {{end -}}
   <a class="link" href="{{.URL}}">{{.Host}}</a>: <span class="description">{{.Text}}</span>
   {{- range .Tags}} <a class="tag" href="/search?q={{tagQuery .}}">{{.}}</a>{{end -}}
 </div>
+{{- end}}
+
+{{define "add-form" -}}
+<form class="add-form" method="post" action="/add">
+  {{- with .Error}}
+  <p class="form-message error">{{.}}</p>
+  {{- end}}
+  {{- with .Existing}}
+  <article>{{template "post" .}}</article>
+  {{- end}}
+  <label for="add-url">URL</label>
+  <input id="add-url" name="url" value="{{.URL}}" inputmode="url" autocomplete="off" required>
+  <label for="add-description">Description</label>
+  <textarea id="add-description" name="description" rows="2">{{.Description}}</textarea>
+  <label for="add-tags">Tags</label>
+  <input id="add-tags" name="tags" value="{{.Tags}}" placeholder="comma separated" autocomplete="off">
+  <label for="add-day">Day</label>
+  <span class="form-row"><input id="add-day" name="day" type="date" value="{{.Day}}"> <span class="form-hint">empty: today</span></span>
+  <label for="add-hidden">Hidden</label>
+  <span class="form-row"><input id="add-hidden" name="hidden" type="checkbox"{{if .Hidden}} checked{{end}}></span>
+  <span></span>
+  <span class="form-row"><button type="submit">Add link</button></span>
+</form>
 {{- end}}
 
 {{define "pagination" -}}

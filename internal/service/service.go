@@ -80,7 +80,7 @@ func (s *Service) AddLink(ctx context.Context, in NewLink) (AddResult, error) {
 	if day == "" {
 		day = links.Day(at, s.loc)
 	} else if _, err := time.Parse(links.DayLayout, day); err != nil {
-		return AddResult{}, fmt.Errorf("%w: day %q", ErrInvalid, day)
+		return AddResult{}, fmt.Errorf("%w: day %q is not YYYY-MM-DD", ErrInvalid, day)
 	}
 
 	l := &store.Link{
