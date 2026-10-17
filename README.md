@@ -8,7 +8,9 @@ the previous Flask + MongoDB version is tagged `v1.0.0-flask-mongo`.
 ```
 cmd/linksblog/       the service binary
 internal/auth/       Google sign-in, signed session cookie
+internal/bot/        chat message parsing shared by bots; discord/ is the Discord bot
 internal/links/      link rules: URL normalization (dedup key), days, search query syntax
+internal/service/    LinkService: adding links (with dedup) and bot channels; used by bots
 internal/store/      SQLite storage; migrations/ are applied on open
 internal/web/        pages, templates and static files (embedded into the binary)
 tools/import-mongo/  one-off import from the old MongoDB (not part of the binary)
@@ -58,6 +60,36 @@ Update with `docker compose pull && docker compose up -d`. To run a particular
 commit, start the CI workflow by hand ("Run workflow", or
 `gh workflow run ci.yaml -f ref=<commit>`): it publishes `:sha-<commit>`, which is
 then set as `LINKSBLOG_VERSION` in `.env`. A local build: `docker build -t linksblog .`.
+
+## Discord bot
+
+The bot runs inside `linksblog serve` when `DISCORD_TOKEN` is set. It reads
+messages of the users in `DISCORD_ALLOWED_USERS` (comma-separated user IDs) in
+channels turned on for it, adds every URL as a link and reacts with ✅ (added),
+🔁 (already in the blog) or ❌ (error). The rest of the text becomes the
+description, `#hashtags` become tags (`_` reads as a space), and Discord's link
+previews fill in the title. Edits and deletions of messages are not followed.
+
+Setup in the [Developer Portal](https://discord.com/developers/applications):
+
+1. New Application. On Installation: Guild Install only, Install Link: None.
+2. On Bot: Public Bot off, Message Content Intent on; Reset Token gives `DISCORD_TOKEN`.
+3. OAuth2 → URL Generator: scopes `bot` and `applications.commands`, permissions
+   View Channels, Read Message History and Add Reactions. Open the URL to add the
+   bot to a server.
+4. Your user ID: Discord settings → Advanced → Developer Mode, then right-click
+   your name → Copy User ID.
+
+Commands, for the allowed users (Discord shows them to members with Manage Server):
+
+```
+/links channel set [tag:<tag>] [hidden:<bool>]   turn this channel on; tag:- removes the tag
+/links channel show                              show the channel's settings
+/links channel off                               turn it off
+/links import                                    add links from the channel's whole history
+```
+
+Messages sent while the bot was offline are picked up when it reconnects.
 
 ## Importing the old MongoDB data
 

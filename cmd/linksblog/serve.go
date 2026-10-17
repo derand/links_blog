@@ -13,6 +13,8 @@ import (
 	"time"
 
 	"github.com/derand/links_blog/internal/auth"
+	"github.com/derand/links_blog/internal/bot/discord"
+	"github.com/derand/links_blog/internal/service"
 	"github.com/derand/links_blog/internal/store"
 	"github.com/derand/links_blog/internal/web"
 )
@@ -22,6 +24,32 @@ func env(name, def string) string {
 		return v
 	}
 	return def
+}
+
+// envList splits a comma-separated environment variable.
+func envList(name string) []string {
+	var out []string
+	for _, v := range strings.Split(os.Getenv(name), ",") {
+		if v = strings.TrimSpace(v); v != "" {
+			out = append(out, v)
+		}
+	}
+	return out
+}
+
+// startDiscord runs the Discord bot in the background. Its failures are logged
+// and do not stop the site.
+func startDiscord(ctx context.Context, token string, links service.LinkService) {
+	b, err := discord.New(discord.Config{Token: token, AllowedUsers: envList("DISCORD_ALLOWED_USERS")}, links)
+	if err != nil {
+		slog.Error("discord bot is disabled", "err", err)
+		return
+	}
+	go func() {
+		if err := b.Run(ctx); err != nil {
+			slog.Error("discord bot stopped", "err", err)
+		}
+	}()
 }
 
 func runServe(args []string) error {
@@ -40,21 +68,17 @@ Environment:
   GOOGLE_CLIENT_ID          Google OAuth client
   GOOGLE_CLIENT_SECRET
 Sign-in is disabled unless the base URL, admin emails and Google client are set.
+  DISCORD_TOKEN             Discord bot token; the bot runs only when it is set
+  DISCORD_ALLOWED_USERS     comma-separated Discord user IDs whose messages are accepted
 `)
 	}
 	fs.Parse(args)
 
-	var admins []string
-	for _, e := range strings.Split(os.Getenv("LINKSBLOG_ADMIN_EMAILS"), ",") {
-		if e = strings.TrimSpace(e); e != "" {
-			admins = append(admins, e)
-		}
-	}
 	a, err := auth.New(auth.Config{
 		ClientID:     os.Getenv("GOOGLE_CLIENT_ID"),
 		ClientSecret: os.Getenv("GOOGLE_CLIENT_SECRET"),
 		BaseURL:      os.Getenv("LINKSBLOG_BASE_URL"),
-		Admins:       admins,
+		Admins:       envList("LINKSBLOG_ADMIN_EMAILS"),
 		Secret:       []byte(os.Getenv("LINKSBLOG_SESSION_SECRET")),
 	})
 	if err != nil {
@@ -81,6 +105,9 @@ Sign-in is disabled unless the base URL, admin emails and Google client are set.
 	h, err := web.New(st, a, time.Local)
 	if err != nil {
 		return err
+	}
+	if token := os.Getenv("DISCORD_TOKEN"); token != "" {
+		startDiscord(ctx, token, service.New(st, time.Local))
 	}
 	srv := &http.Server{
 		Addr:              *addr,

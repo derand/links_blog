@@ -1,0 +1,147 @@
+// Package service is the single entry point for changing the blog's links:
+// bots, the web form and the API all go through LinkService.
+package service
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"strings"
+	"time"
+
+	"github.com/derand/links_blog/internal/links"
+	"github.com/derand/links_blog/internal/store"
+)
+
+// ErrInvalid marks errors caused by bad input rather than by the server.
+var ErrInvalid = errors.New("invalid link")
+
+type LinkService interface {
+	AddLink(ctx context.Context, in NewLink) (AddResult, error)
+	// MessageLinks returns the links added from a chat message, see store.LinksByMessage.
+	MessageLinks(ctx context.Context, source, messageRef string) ([]*store.Link, error)
+	// FillMetadata sets a link's title and site description where they are empty.
+	FillMetadata(ctx context.Context, id int64, title, siteDescription string) (bool, error)
+
+	Channel(ctx context.Context, platform, channelID string) (*store.Channel, error)
+	Channels(ctx context.Context, platform string) ([]*store.Channel, error)
+	SaveChannel(ctx context.Context, c *store.Channel) error
+	AdvanceChannel(ctx context.Context, platform, channelID string, messageID int64) error
+}
+
+// NewLink is a link to add.
+type NewLink struct {
+	URL             string
+	Description     string // author's text
+	Title           string // page metadata, if already known
+	SiteDescription string
+	Tags            []string
+	Hidden          bool
+	Day             string    // YYYY-MM-DD; empty means the day of At
+	At              time.Time // when the link was posted; zero means now
+	Source          string    // empty means "web"
+	SourceRef       string    // e.g. "channel_id:message_id"; unique within Source
+}
+
+type AddResult struct {
+	Link      *store.Link // the added link, or the existing one if Dup != NotDup
+	Duplicate store.Dup
+}
+
+type Service struct {
+	st  *store.Store
+	loc *time.Location
+	now func() time.Time
+}
+
+// New returns a service that dates links in loc, the blog's time zone.
+func New(st *store.Store, loc *time.Location) *Service {
+	return &Service{st: st, loc: loc, now: time.Now}
+}
+
+var _ LinkService = (*Service)(nil)
+
+// AddLink adds a link unless it is a duplicate by source reference or by URL.
+func (s *Service) AddLink(ctx context.Context, in NewLink) (AddResult, error) {
+	rawURL := strings.TrimSpace(in.URL)
+	norm, err := links.Normalize(rawURL)
+	if err != nil {
+		return AddResult{}, fmt.Errorf("%w: %v", ErrInvalid, err)
+	}
+	if !strings.Contains(rawURL, "://") {
+		rawURL = "https://" + rawURL
+	}
+
+	at := in.At
+	if at.IsZero() {
+		at = s.now()
+	}
+	day := in.Day
+	if day == "" {
+		day = links.Day(at, s.loc)
+	} else if _, err := time.Parse(links.DayLayout, day); err != nil {
+		return AddResult{}, fmt.Errorf("%w: day %q", ErrInvalid, day)
+	}
+
+	l := &store.Link{
+		URL:             rawURL,
+		URLNorm:         norm,
+		Description:     strings.TrimSpace(in.Description),
+		Title:           strings.TrimSpace(in.Title),
+		SiteDescription: strings.TrimSpace(in.SiteDescription),
+		Day:             day,
+		CreatedAt:       at,
+		Hidden:          in.Hidden,
+		Source:          in.Source,
+		SourceRef:       in.SourceRef,
+		Tags:            cleanTags(in.Tags),
+	}
+	if l.Source == "" {
+		l.Source = "web"
+	}
+	got, dup, err := s.st.AddLink(ctx, l)
+	if err != nil {
+		return AddResult{}, err
+	}
+	return AddResult{Link: got, Duplicate: dup}, nil
+}
+
+// cleanTags trims tags and a leading "#", drops empty ones and repeats
+// (ignoring case), keeping the author's order.
+func cleanTags(tags []string) []string {
+	var out []string
+	seen := map[string]bool{}
+	for _, t := range tags {
+		t = strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(t), "#"))
+		if t == "" || seen[strings.ToLower(t)] {
+			continue
+		}
+		seen[strings.ToLower(t)] = true
+		out = append(out, t)
+	}
+	return out
+}
+
+func (s *Service) MessageLinks(ctx context.Context, source, messageRef string) ([]*store.Link, error) {
+	return s.st.LinksByMessage(ctx, source, messageRef)
+}
+
+func (s *Service) FillMetadata(ctx context.Context, id int64, title, siteDescription string) (bool, error) {
+	return s.st.FillMetadata(ctx, id, strings.TrimSpace(title), strings.TrimSpace(siteDescription))
+}
+
+func (s *Service) Channel(ctx context.Context, platform, channelID string) (*store.Channel, error) {
+	return s.st.Channel(ctx, platform, channelID)
+}
+
+func (s *Service) Channels(ctx context.Context, platform string) ([]*store.Channel, error) {
+	return s.st.Channels(ctx, platform)
+}
+
+func (s *Service) SaveChannel(ctx context.Context, c *store.Channel) error {
+	return s.st.SaveChannel(ctx, c)
+}
+
+func (s *Service) AdvanceChannel(ctx context.Context, platform, channelID string, messageID int64) error {
+	return s.st.AdvanceChannel(ctx, platform, channelID, messageID)
+}
