@@ -335,7 +335,7 @@ func TestEditAndDelete(t *testing.T) {
 		`action="/delete/`+id+`"`, "Page metadata: waiting.")
 
 	form := url.Values{"url": {"https://site5.example.com/other"}, "description": {"Edited post"},
-		"title": {"Page T"}, "tags": {"common, more"}, "day": {"2020-01-06"}}
+		"note": {"Full zanzibar text"}, "title": {"Page T"}, "tags": {"common, more"}, "day": {"2020-01-06"}}
 	if r := s.post(edit, form, false); r.code != http.StatusForbidden {
 		t.Errorf("POST %s signed out: %d", edit, r.code)
 	}
@@ -348,6 +348,10 @@ func TestEditAndDelete(t *testing.T) {
 	}
 	s.get("/2020-01-06.html", false).has(t, "moved", "Edited post", `href="https://site5.example.com/other"`, ">more</a>")
 	s.get("/search?q=edited", false).has(t, "search", "Search results: 1")
+	// The note is searched and edited, not shown.
+	s.get("/2020-01-06.html", false).hasNot(t, "note in the feed", "zanzibar")
+	s.get("/search?q=zanzibar", false).has(t, "note search", "Search results: 1")
+	s.get(edit, true).has(t, "note on the edit page", ">Full zanzibar text</textarea>")
 
 	// Taking another link's URL; a missing day.
 	s.post("/add", url.Values{"url": {"https://taken.example.org"}, "description": {"Taken one"}}, true)

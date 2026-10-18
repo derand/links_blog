@@ -20,6 +20,7 @@ type linkForm struct {
 	Action, Submit              string
 	Edit                        bool // editing: day is required, page metadata is shown
 	URL, Description, Tags, Day string
+	Note                        string
 	Title, SiteDescription      string
 	Hidden                      bool
 	Error                       string
@@ -63,6 +64,7 @@ func (s *Server) parseForm(w http.ResponseWriter, r *http.Request, f *linkForm) 
 	v := r.PostForm
 	f.URL = strings.TrimSpace(v.Get("url"))
 	f.Description = v.Get("description")
+	f.Note = v.Get("note")
 	f.Title = v.Get("title")
 	f.SiteDescription = v.Get("site_description")
 	f.Tags = v.Get("tags")
@@ -200,7 +202,7 @@ func (s *Server) editPage(w http.ResponseWriter, r *http.Request) {
 	data := s.newEditPage(r, l)
 	f := data.Form
 	f.URL, f.Description, f.Tags, f.Day = l.URL, l.Description, strings.Join(l.Tags, ", "), l.Day
-	f.Title, f.SiteDescription, f.Hidden = l.Title, l.SiteDescription, l.Hidden
+	f.Note, f.Title, f.SiteDescription, f.Hidden = l.Note, l.Title, l.SiteDescription, l.Hidden
 	s.render(w, http.StatusOK, "edit", data)
 }
 
@@ -227,6 +229,7 @@ func (s *Server) edit(w http.ResponseWriter, r *http.Request) {
 			ID:              l.ID,
 			URL:             f.URL,
 			Description:     f.Description,
+			Note:            f.Note,
 			Title:           f.Title,
 			SiteDescription: f.SiteDescription,
 			Tags:            strings.Split(f.Tags, ","),

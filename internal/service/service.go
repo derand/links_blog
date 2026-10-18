@@ -40,6 +40,7 @@ type LinkService interface {
 type NewLink struct {
 	URL             string
 	Description     string // author's text
+	Note            string // author's full text if Description is its beginning
 	Title           string // page metadata, if already known
 	SiteDescription string
 	Tags            []string
@@ -55,6 +56,7 @@ type LinkEdit struct {
 	ID              int64
 	URL             string
 	Description     string
+	Note            string
 	Title           string
 	SiteDescription string
 	Tags            []string
@@ -110,6 +112,7 @@ func (s *Service) AddLink(ctx context.Context, in NewLink) (AddResult, error) {
 		URL:             rawURL,
 		URLNorm:         norm,
 		Description:     strings.TrimSpace(in.Description),
+		Note:            strings.TrimSpace(in.Note),
 		Title:           strings.TrimSpace(in.Title),
 		SiteDescription: strings.TrimSpace(in.SiteDescription),
 		Day:             day,
@@ -148,6 +151,7 @@ func (s *Service) UpdateLink(ctx context.Context, in LinkEdit) (AddResult, error
 		URL:             rawURL,
 		URLNorm:         norm,
 		Description:     strings.TrimSpace(in.Description),
+		Note:            strings.TrimSpace(in.Note),
 		Title:           strings.TrimSpace(in.Title),
 		SiteDescription: strings.TrimSpace(in.SiteDescription),
 		Day:             day,

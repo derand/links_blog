@@ -30,8 +30,8 @@ func TestMigrateIsIdempotent(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if v != 3 {
-			t.Errorf("open #%d: schema version = %d, want 3", i+1, v)
+		if v != 4 {
+			t.Errorf("open #%d: schema version = %d, want 4", i+1, v)
 		}
 		s.Close()
 	}
@@ -126,8 +126,8 @@ func TestFTSSync(t *testing.T) {
 	s := openTest(t)
 	now := time.Now()
 	a := &Link{URL: "https://github.com/derand/x", URLNorm: "github.com/derand/x",
-		Description: "Нейронна мережа для тексту", Day: "2020-01-02", CreatedAt: now,
-		Tags: []string{"neural network", "ml"}}
+		Description: "Нейронна мережа для тексту", Note: "Повний текст про трансформери",
+		Day: "2020-01-02", CreatedAt: now, Tags: []string{"neural network", "ml"}}
 	b := &Link{URL: "https://example.org", URLNorm: "example.org",
 		Description: "Something else", Day: "2020-01-03", CreatedAt: now}
 	if err := s.InsertLinks(ctx, []*Link{a, b}); err != nil {
@@ -146,13 +146,16 @@ func TestFTSSync(t *testing.T) {
 	check("ml", a.ID)               // tags
 	check(`"neural network"`, a.ID) // tag phrase
 	check("something", b.ID)
+	check("трансформери", a.ID) // note
 
 	// Update of the text columns is reflected.
-	if _, err := s.db.Exec(`UPDATE links SET description = 'Інший опис' WHERE id = ?`, a.ID); err != nil {
+	if _, err := s.db.Exec(`UPDATE links SET description = 'Інший опис', note = 'Нотатка' WHERE id = ?`, a.ID); err != nil {
 		t.Fatal(err)
 	}
 	check("мережа")
+	check("трансформери")
 	check("опис", a.ID)
+	check("нотатка", a.ID)
 	check("ml", a.ID) // tags survive the update
 
 	// Removing a tag updates the index.

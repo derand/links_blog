@@ -14,6 +14,7 @@ type Link struct {
 	URL             string
 	URLNorm         string
 	Description     string
+	Note            string // the author's full text if Description is its beginning
 	Title           string
 	SiteDescription string
 	Day             string // YYYY-MM-DD
@@ -69,10 +70,10 @@ func insertLink(ctx context.Context, tx *sql.Tx, l *Link) error {
 		sourceRef = l.SourceRef
 	}
 	res, err := tx.ExecContext(ctx, `
-		INSERT INTO links (url, url_norm, description, title, site_description,
+		INSERT INTO links (url, url_norm, description, note, title, site_description,
 		                   day, created_at, updated_at, hidden, source, source_ref)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		l.URL, l.URLNorm, l.Description, l.Title, l.SiteDescription,
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		l.URL, l.URLNorm, l.Description, l.Note, l.Title, l.SiteDescription,
 		l.Day, l.CreatedAt.Unix(), l.UpdatedAt.Unix(), l.Hidden, l.Source, sourceRef)
 	if err != nil {
 		return err
@@ -230,9 +231,9 @@ func (s *Store) UpdateLink(ctx context.Context, l *Link) (*Link, Dup, error) {
 		       meta_error = CASE WHEN `+refetch+` THEN '' ELSE meta_error END,
 		       meta_failures = CASE WHEN `+refetch+` THEN 0 ELSE meta_failures END,
 		       url = ?1, url_norm = ?2, description = ?3, title = ?4, site_description = ?5,
-		       day = ?6, hidden = ?7, updated_at = ?8
+		       day = ?6, hidden = ?7, updated_at = ?8, note = ?10
 		 WHERE id = ?9`,
-		l.URL, l.URLNorm, l.Description, l.Title, l.SiteDescription, l.Day, l.Hidden, time.Now().Unix(), l.ID)
+		l.URL, l.URLNorm, l.Description, l.Title, l.SiteDescription, l.Day, l.Hidden, time.Now().Unix(), l.ID, l.Note)
 	if err != nil {
 		return nil, NotDup, err
 	}
