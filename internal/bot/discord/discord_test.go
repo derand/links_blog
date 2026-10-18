@@ -104,6 +104,37 @@ func TestHandle(t *testing.T) {
 	}
 }
 
+func TestHandleForward(t *testing.T) {
+	ctx := context.Background()
+	b, st := newTest(t)
+
+	// A forward has no content of its own; the text is in the snapshot.
+	m := msg("100", "1001", owner, "")
+	m.MessageSnapshots = []discordgo.MessageSnapshot{{Message: &discordgo.Message{
+		Content: "Тривалість https://a.example #go",
+		Embeds:  []*discordgo.MessageEmbed{{URL: "https://a.example", Title: "A"}},
+	}}}
+	if got, want := b.handle(ctx, m).reactions(), []string{reactAdded}; !reflect.DeepEqual(got, want) {
+		t.Errorf("reactions = %q, want %q", got, want)
+	}
+	ls, _ := st.LinksByMessage(ctx, platform, "100:1001")
+	if len(ls) != 1 || ls[0].URL != "https://a.example" || ls[0].Description != "Тривалість" ||
+		ls[0].Title != "A" || ls[0].Day != "2026-10-17" || !reflect.DeepEqual(ls[0].Tags, []string{"news", "go"}) {
+		t.Errorf("links: %+v", ls)
+	}
+
+	// Embeds that come later are in the snapshot too.
+	b.handle(ctx, &discordgo.Message{ID: "1002", ChannelID: "100", Author: &discordgo.User{ID: owner},
+		MessageSnapshots: []discordgo.MessageSnapshot{{Message: &discordgo.Message{Content: "https://b.example"}}}})
+	upd := &discordgo.Message{ID: "1002", ChannelID: "100", MessageSnapshots: []discordgo.MessageSnapshot{{
+		Message: &discordgo.Message{Embeds: []*discordgo.MessageEmbed{{URL: "https://b.example", Title: "B"}}},
+	}}}
+	b.onUpdate(ctx, upd)
+	if ls, _ := st.LinksByMessage(ctx, platform, "100:1002"); len(ls) != 1 || ls[0].Title != "B" {
+		t.Errorf("forward metadata: %+v", ls)
+	}
+}
+
 func TestFillMetadata(t *testing.T) {
 	ctx := context.Background()
 	b, st := newTest(t)

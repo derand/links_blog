@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"slices"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -138,7 +139,7 @@ func (b *Bot) handle(ctx context.Context, m *discordgo.Message) handled {
 		return h
 	}
 
-	parsed := bot.ParseMessage(m.Content, embeds(m))
+	parsed := bot.ParseMessage(content(m), embeds(m))
 	var tags []string
 	if ch.DefaultTag != "" {
 		tags = append(tags, ch.DefaultTag)
@@ -181,7 +182,7 @@ func (b *Bot) handle(ctx context.Context, m *discordgo.Message) handled {
 // onUpdate fills empty metadata from embeds that Discord attaches after the
 // message was created. Edits of the text are ignored.
 func (b *Bot) onUpdate(ctx context.Context, m *discordgo.Message) {
-	if len(m.Embeds) == 0 {
+	if len(embeds(m)) == 0 {
 		return
 	}
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
@@ -216,11 +217,35 @@ func messageRef(m *discordgo.Message) string {
 	return m.ChannelID + ":" + m.ID
 }
 
+// messages returns m and the messages forwarded in it. A forward has no text
+// of its own: the text and embeds are in the snapshot.
+func messages(m *discordgo.Message) []*discordgo.Message {
+	ms := []*discordgo.Message{m}
+	for _, s := range m.MessageSnapshots {
+		if s.Message != nil {
+			ms = append(ms, s.Message)
+		}
+	}
+	return ms
+}
+
+func content(m *discordgo.Message) string {
+	var parts []string
+	for _, m := range messages(m) {
+		if m.Content != "" {
+			parts = append(parts, m.Content)
+		}
+	}
+	return strings.Join(parts, "\n\n")
+}
+
 func embeds(m *discordgo.Message) []bot.Embed {
 	var out []bot.Embed
-	for _, e := range m.Embeds {
-		if e != nil && e.URL != "" {
-			out = append(out, bot.Embed{URL: e.URL, Title: e.Title, Description: e.Description})
+	for _, m := range messages(m) {
+		for _, e := range m.Embeds {
+			if e != nil && e.URL != "" {
+				out = append(out, bot.Embed{URL: e.URL, Title: e.Title, Description: e.Description})
+			}
 		}
 	}
 	return out
