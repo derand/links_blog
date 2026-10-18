@@ -79,6 +79,7 @@ func Permanent(err error) bool {
 
 type Fetcher struct {
 	client *http.Client
+	fxAPI  string // FxTwitter API base, see twitter.go
 }
 
 // New returns a fetcher whose requests time out after timeout.
@@ -111,7 +112,7 @@ func newFetcher(timeout time.Duration, allowed func(netip.Addr) bool) *Fetcher {
 		MaxIdleConns:          10,
 		IdleConnTimeout:       30 * time.Second,
 	}
-	return &Fetcher{client: &http.Client{
+	return &Fetcher{fxAPI: fxTwitterAPI, client: &http.Client{
 		Transport: transport,
 		Timeout:   timeout,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
@@ -132,6 +133,7 @@ func checkScheme(scheme string) error {
 
 // Fetch downloads the page at url and returns its metadata. Pages that are not
 // HTML have none. Guard pages instead of the content give a *BlockedError.
+// Tweets and X profiles are asked from FxTwitter.
 func (f *Fetcher) Fetch(ctx context.Context, url string) (Metadata, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
@@ -139,6 +141,9 @@ func (f *Fetcher) Fetch(ctx context.Context, url string) (Metadata, error) {
 	}
 	if err := checkScheme(req.URL.Scheme); err != nil {
 		return Metadata{}, err
+	}
+	if p := twitterAPIPath(req.URL); p != "" {
+		return f.fetchTwitter(ctx, p)
 	}
 	req.Header.Set("User-Agent", userAgent)
 	req.Header.Set("Accept", "text/html,application/xhtml+xml;q=0.9,*/*;q=0.1")

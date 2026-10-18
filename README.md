@@ -35,7 +35,8 @@ The database path is set with `-db` or `LINKSBLOG_DB` (default `data/linksblog.d
 
 `serve` fills empty titles and descriptions of links from their pages in the
 background, one page every 2 seconds and only from public addresses;
-`LINKSBLOG_FETCH_METADATA=off` turns it off.
+`LINKSBLOG_FETCH_METADATA=off` turns it off. Tweets and X profiles are looked up
+through the third-party [FxTwitter](https://github.com/FxEmbed/FxEmbed) API.
 
 ## Running with Docker
 
