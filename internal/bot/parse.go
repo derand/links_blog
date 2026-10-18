@@ -62,6 +62,7 @@ func ParseMessage(text string, embeds []Embed) Message {
 		addURL(u)
 		return rest
 	})
+	text = stripMarkup(text)
 
 	var lines []string
 	for _, line := range strings.Split(text, "\n") {
@@ -101,11 +102,11 @@ func trimURL(u string) (string, string) {
 }
 
 // cleanLine removes hashtags at the end of the line, the "#" of the others and
-// punctuation left alone by removed URLs, and collapses spaces.
+// punctuation or markup left alone by removed URLs ("**<url>**"), and collapses spaces.
 func cleanLine(line string) string {
 	var words []string
 	for _, w := range strings.Fields(line) {
-		if strings.Trim(w, ".,;:!?") != "" {
+		if strings.Trim(w, ".,;:!?") != "" && (len(w) < 2 || strings.Trim(w, "*_~|") != "") {
 			words = append(words, w)
 		}
 	}

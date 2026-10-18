@@ -49,8 +49,25 @@ func TestParseMessage(t *testing.T) {
 			text: "https://x.example/#anchor <#123456> # Heading issue#5 #c++ #node.js.",
 			want: Message{
 				Links:       []Link{{URL: "https://x.example/#anchor"}},
-				Description: "<#123456> # Heading issue#5",
+				Description: "# Heading issue#5",
 				Tags:        []string{"c++", "node.js"},
+			},
+		},
+		{
+			name: "discord markup",
+			text: "## Included in **a16z** __newsletter__ ~~old~~ ||spoiler||:\n> *quoted* and _italic_ `code`\n" +
+				"<@123> <@&456> <:pepe:789> thanks **https://a.example/x__y**",
+			want: Message{
+				Links:       []Link{{URL: "https://a.example/x__y"}},
+				Description: "Included in a16z newsletter old spoiler:\nquoted and italic code\nthanks",
+			},
+		},
+		{
+			name: "not markup",
+			text: "snake_case 2 * 3 * 4 \\*not italic\\* #neural_network tag\n* item\n```go\nx := 1\n```",
+			want: Message{
+				Description: "snake_case 2 * 3 * 4 *not italic* neural network tag\n* item\nx := 1",
+				Tags:        []string{"neural network"},
 			},
 		},
 		{
