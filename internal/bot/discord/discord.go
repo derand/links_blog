@@ -150,6 +150,7 @@ func (b *Bot) handle(ctx context.Context, m *discordgo.Message) handled {
 		res, err := b.links.AddLink(ctx, service.NewLink{
 			URL:             l.URL,
 			Description:     parsed.Description,
+			Note:            parsed.Note,
 			Title:           l.Title,
 			SiteDescription: l.SiteDescription,
 			Tags:            tags,

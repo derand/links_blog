@@ -2,6 +2,7 @@ package bot
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -71,9 +72,53 @@ func TestParseMessage(t *testing.T) {
 			},
 		},
 		{
-			name: "paragraphs",
+			name: "paragraphs: the first is the description, all are the note",
 			text: "  first  line \n\n\n\nsecond https://a.example\n\n",
-			want: Message{Links: []Link{{URL: "https://a.example"}}, Description: "first line\n\nsecond"},
+			want: Message{
+				Links:       []Link{{URL: "https://a.example"}},
+				Description: "first line",
+				Note:        "first line\n\nsecond",
+			},
+		},
+		{
+			name: "a line of only a url does not split a paragraph",
+			text: "5 правил:\n1. Відповідальність\nhttps://a.example\nІ коментар до відео:",
+			want: Message{
+				Links:       []Link{{URL: "https://a.example"}},
+				Description: "5 правил:\n1. Відповідальність\nІ коментар до відео:",
+			},
+		},
+		{
+			name: "long text",
+			text: strings.Repeat("слово ", 60) + "https://a.example",
+			want: Message{
+				Links:       []Link{{URL: "https://a.example"}},
+				Description: strings.TrimSpace(strings.Repeat("слово ", 60)),
+				Note:        strings.TrimSpace(strings.Repeat("слово ", 60)),
+			},
+		},
+		{
+			name: "urls inside a sentence become domains",
+			text: "Дві штуки: https://www.sqlite.org/fts5.html і <https://pkg.go.dev/x>, обидві #go\n" +
+				"знайшов сайт https://t-j.ru/guide/duration/ там приклад\n" +
+				"https://a.example/start за репост дякую)\nв кінці https://b.example/end.",
+			want: Message{
+				Links: []Link{
+					{URL: "https://www.sqlite.org/fts5.html"}, {URL: "https://pkg.go.dev/x"},
+					{URL: "https://t-j.ru/guide/duration/"}, {URL: "https://a.example/start"}, {URL: "https://b.example/end"},
+				},
+				Description: "Дві штуки: sqlite.org і pkg.go.dev, обидві\nзнайшов сайт t-j.ru там приклад\n" +
+					"за репост дякую)\nв кінці",
+				Tags: []string{"go"},
+			},
+		},
+		{
+			name: "masked links are text when there are bare urls",
+			text: "She introduces [Soul Protocol](https://x.com/0xSoulProtocol), a layer.\nhttps://x.com/stacy_muur/status/1",
+			want: Message{
+				Links:       []Link{{URL: "https://x.com/stacy_muur/status/1"}},
+				Description: "She introduces Soul Protocol, a layer.",
+			},
 		},
 		{
 			name: "no urls",

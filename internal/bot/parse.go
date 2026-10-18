@@ -2,8 +2,11 @@
 package bot
 
 import (
+	"net/url"
 	"regexp"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/derand/links_blog/internal/links"
 )
@@ -18,7 +21,8 @@ type Embed struct {
 // Message is the parsed text of a chat message.
 type Message struct {
 	Links       []Link
-	Description string   // the text without URLs and trailing hashtags
+	Description string   // the text without URLs and trailing hashtags, its first paragraph if long
+	Note        string   // the whole text if Description is only its first paragraph
 	Tags        []string // from #hashtags, "_" read as a space
 }
 
@@ -28,6 +32,10 @@ type Link struct {
 	SiteDescription string
 }
 
+// maxDescription is the longest text kept whole as the description; a longer
+// one, or one of several paragraphs, is cut to its first paragraph.
+const maxDescription = 300
+
 var (
 	maskedRe  = regexp.MustCompile(`\[([^\]\n]*)\]\(<?(https?://[^\s)>]+)>?\)`)
 	urlRe     = regexp.MustCompile(`<?https?://[^\s<>]+>?`)
@@ -36,10 +44,15 @@ var (
 
 // ParseMessage splits a message into links, a description shared by all of them
 // and tags. Embeds fill the links' metadata.
+//
+// Bare URLs are the links. A URL inside a sentence is replaced by its domain,
+// one at the start or the end of a line is removed. Masked links ([text](url))
+// keep their text in the description and are links only if there are no bare URLs.
 func ParseMessage(text string, embeds []Embed) Message {
 	var (
-		m    Message
-		seen = map[string]bool{}
+		m      Message
+		seen   = map[string]bool{}
+		masked []string
 	)
 	addURL := func(u string) {
 		norm, err := links.Normalize(u)
@@ -50,21 +63,26 @@ func ParseMessage(text string, embeds []Embed) Message {
 		m.Links = append(m.Links, Link{URL: u})
 	}
 
-	// [text](url): the text stays in the description.
 	text = maskedRe.ReplaceAllStringFunc(text, func(s string) string {
 		sub := maskedRe.FindStringSubmatch(s)
-		addURL(sub[2])
+		masked = append(masked, sub[2])
 		return sub[1]
 	})
-	// Bare URLs, <url> included (Discord's form without a preview), are removed.
-	text = urlRe.ReplaceAllStringFunc(text, func(s string) string {
-		u, rest := trimURL(strings.TrimSuffix(strings.TrimPrefix(s, "<"), ">"))
-		addURL(u)
-		return rest
-	})
-	text = stripMarkup(text)
-
 	var lines []string
+	for _, line := range strings.Split(text, "\n") {
+		// A line of only a URL goes away, not to split a paragraph.
+		if l := replaceURLs(line, addURL); strings.TrimSpace(l) != "" || strings.TrimSpace(line) == "" {
+			lines = append(lines, l)
+		}
+	}
+	if len(m.Links) == 0 {
+		for _, u := range masked {
+			addURL(u)
+		}
+	}
+	text = stripMarkup(strings.Join(lines, "\n"))
+
+	lines = lines[:0]
 	for _, line := range strings.Split(text, "\n") {
 		line = hashtagRe.ReplaceAllStringFunc(line, func(s string) string {
 			sub := hashtagRe.FindStringSubmatch(s)
@@ -75,6 +93,9 @@ func ParseMessage(text string, embeds []Embed) Message {
 		lines = append(lines, cleanLine(line))
 	}
 	m.Description = joinLines(lines)
+	if first, _, more := strings.Cut(m.Description, "\n\n"); more || utf8.RuneCountInString(m.Description) > maxDescription {
+		m.Description, m.Note = first, m.Description
+	}
 	urls := make([]string, len(m.Links))
 	for i, l := range m.Links {
 		urls[i] = l.URL
@@ -83,6 +104,62 @@ func ParseMessage(text string, embeds []Embed) Message {
 		m.Links[i].Title, m.Links[i].SiteDescription = e.Title, e.Description
 	}
 	return m
+}
+
+// replaceURLs passes the bare URLs of a line ("<url>" included, Discord's form
+// without a preview) to add and removes them, or, if a URL stands between
+// words, replaces each URL with words before it by its domain:
+// "two: <url1> and <url2>" → "two: a.example and b.example".
+func replaceURLs(line string, add func(string)) string {
+	locs := urlRe.FindAllStringIndex(line, -1)
+	if locs == nil {
+		return line
+	}
+	var (
+		texts = []string{line[:locs[0][0]]} // text around the URLs: before, between, after
+		urls  []string
+	)
+	for i, loc := range locs {
+		u, rest := trimURL(strings.TrimSuffix(strings.TrimPrefix(line[loc[0]:loc[1]], "<"), ">"))
+		add(u)
+		urls = append(urls, u)
+		end := len(line)
+		if i+1 < len(locs) {
+			end = locs[i+1][0]
+		}
+		texts = append(texts, rest+line[loc[1]:end])
+	}
+	before := func(i int) bool { return hasWords(strings.Join(texts[:i+1], " ")) }
+	after := func(i int) bool { return hasWords(strings.Join(texts[i+1:], " ")) }
+	inline := false
+	for i := range urls {
+		inline = inline || before(i) && after(i)
+	}
+
+	var b strings.Builder
+	b.WriteString(texts[0])
+	for i, u := range urls {
+		if inline && before(i) {
+			b.WriteString(domain(u))
+		}
+		b.WriteString(texts[i+1])
+	}
+	return b.String()
+}
+
+// hasWords reports whether s has text other than punctuation and hashtags.
+func hasWords(s string) bool {
+	return strings.ContainsFunc(hashtagRe.ReplaceAllString(s, ""), func(r rune) bool {
+		return unicode.IsLetter(r) || unicode.IsDigit(r)
+	})
+}
+
+func domain(rawURL string) string {
+	u, err := url.Parse(rawURL)
+	if err != nil || u.Hostname() == "" {
+		return rawURL
+	}
+	return strings.TrimPrefix(strings.ToLower(u.Hostname()), "www.")
 }
 
 // trimURL drops punctuation that ends the sentence rather than the URL and
