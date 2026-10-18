@@ -56,6 +56,23 @@ func TestAddLink(t *testing.T) {
 	}
 }
 
+func TestAddLinkPrivate(t *testing.T) {
+	ctx := context.Background()
+	s, _ := newTest(t)
+	for url, hidden := range map[string]bool{
+		"https://t.me/c/1729400185/1549120": true,
+		"https://t.me/Coin_Post/15792":      false,
+	} {
+		res, err := s.AddLink(ctx, NewLink{URL: url})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if res.Link.Hidden != hidden {
+			t.Errorf("%s: hidden = %v, want %v", url, res.Link.Hidden, hidden)
+		}
+	}
+}
+
 func TestAddLinkDuplicates(t *testing.T) {
 	ctx := context.Background()
 	s, st := newTest(t)

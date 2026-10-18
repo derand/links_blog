@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/derand/links_blog/internal/links"
 	"github.com/derand/links_blog/internal/meta"
 	"github.com/derand/links_blog/internal/store"
 )
@@ -88,6 +89,14 @@ func host(rawURL string) string {
 }
 
 func (s *Service) fetchMetadata(ctx context.Context, f Fetcher, l *store.Link) {
+	if links.Private(l.URL) {
+		// Only a login page is there for a stranger.
+		r := store.MetaResult{Status: store.MetaBlocked, Error: "private link"}
+		if err := s.st.SaveMetadata(ctx, l.ID, r, s.now()); err != nil {
+			slog.Error("save metadata", "link", l.ID, "err", err)
+		}
+		return
+	}
 	m, err := f.Fetch(ctx, l.URL)
 	if ctx.Err() != nil {
 		return // shutting down: not the page's fault

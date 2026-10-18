@@ -81,6 +81,7 @@ func TestRunMetadata(t *testing.T) {
 	}
 	a1, a2 := add("a.example/1"), add("a.example/2")
 	wall, gone, busy := add("wall.example/x"), add("gone.example/x"), add("busy.example/x")
+	private := add("https://discord.com/channels/1/2/3")
 
 	done := make(chan struct{})
 	go func() {
@@ -102,7 +103,10 @@ func TestRunMetadata(t *testing.T) {
 	}
 	f.mu.Unlock()
 
-	for id, want := range map[int64]store.MetaStatus{wall: store.MetaBlocked, gone: store.MetaDead, busy: store.MetaError} {
+	// Private links are not asked for (the fetch count below).
+	for id, want := range map[int64]store.MetaStatus{
+		wall: store.MetaBlocked, gone: store.MetaDead, busy: store.MetaError, private: store.MetaBlocked,
+	} {
 		if l := link(id); l.MetaStatus != want || l.MetaError == "" {
 			t.Errorf("%s: status %q %q, want %q", l.URL, l.MetaStatus, l.MetaError, want)
 		}

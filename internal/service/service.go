@@ -114,7 +114,7 @@ func (s *Service) AddLink(ctx context.Context, in NewLink) (AddResult, error) {
 		SiteDescription: strings.TrimSpace(in.SiteDescription),
 		Day:             day,
 		CreatedAt:       at,
-		Hidden:          in.Hidden,
+		Hidden:          in.Hidden || links.Private(rawURL),
 		Source:          in.Source,
 		SourceRef:       in.SourceRef,
 		Tags:            cleanTags(in.Tags),
