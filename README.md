@@ -9,7 +9,7 @@ the previous Flask + MongoDB version is tagged `v1.0.0-flask-mongo`.
 cmd/linksblog/       the service binary
 internal/auth/       Google sign-in, signed session cookie
 internal/bot/        chat message parsing shared by bots; discord/ is the Discord bot
-internal/links/      link rules: URL normalization (dedup key), days, search query syntax
+internal/links/      link rules: canonical URL and dedup key, days, search query syntax
 internal/service/    LinkService: adding links (with dedup) and bot channels; used by bots
 internal/store/      SQLite storage; migrations/ are applied on open
 internal/web/        pages, templates and static files (embedded into the binary)

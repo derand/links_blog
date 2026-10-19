@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -221,5 +222,42 @@ func TestMetadataQueue(t *testing.T) {
 	s.UpdateLink(ctx, h)
 	if got := fmt.Sprint(next(now)); got != fmt.Sprint([]int64{half.ID, old.ID}) {
 		t.Errorf("after clearing a title: %v", got)
+	}
+}
+
+func TestSetLinkURLs(t *testing.T) {
+	ctx := context.Background()
+	s := openTest(t)
+	a, _, err := s.AddLink(ctx, &Link{URL: "https://a.example", URLNorm: "a.example", Day: "2026-10-19", Source: "web"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, _, err := s.AddLink(ctx, &Link{URL: "https://b.example", URLNorm: "b.example", Day: "2026-10-19", Source: "web"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The keys swap: each one is still taken while the other link moves.
+	err = s.SetLinkURLs(ctx, []LinkURL{
+		{ID: a.ID, URL: "https://b.example/", URLNorm: "b.example"},
+		{ID: b.ID, URL: "https://a.example/", URLNorm: "a.example"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	us, err := s.LinkURLs(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []LinkURL{{a.ID, "https://b.example/", "b.example"}, {b.ID, "https://a.example/", "a.example"}}
+	if !reflect.DeepEqual(us, want) {
+		t.Errorf("got %+v, want %+v", us, want)
+	}
+	// Search sees the new URL.
+	q, err := links.ParseQuery("b")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ls, _, err := s.Search(ctx, q, 0, 10, true); err != nil || len(ls) != 1 || ls[0].ID != a.ID {
+		t.Errorf("search: %v %+v", err, ls)
 	}
 }

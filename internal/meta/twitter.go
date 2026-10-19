@@ -12,6 +12,8 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/derand/links_blog/internal/links"
 )
 
 // X shows a page without tweets to anything but a browser, so tweets and
@@ -19,14 +21,7 @@ import (
 // may disappear: then these links just stay without metadata.
 const fxTwitterAPI = "https://api.fxtwitter.com"
 
-// Hosts that serve x.com's paths: the site itself and the embed fixers.
-var twitterHosts = map[string]bool{
-	"x.com": true, "twitter.com": true, "mobile.twitter.com": true, "mobile.x.com": true,
-	"fxtwitter.com": true, "fixupx.com": true, "vxtwitter.com": true, "fixvx.com": true,
-}
-
 var (
-	tweetPath   = regexp.MustCompile(`^/(?:[A-Za-z0-9_]{1,15}|i(?:/web)?)/status(?:es)?/(\d{1,20})(?:/|$)`)
 	profilePath = regexp.MustCompile(`^/([A-Za-z0-9_]{1,15})/?$`)
 	// x.com pages whose path looks like a user name.
 	notProfiles = map[string]bool{
@@ -39,11 +34,11 @@ var (
 // twitterAPIPath returns the FxTwitter API path for a tweet or profile URL,
 // or "" if u is not one.
 func twitterAPIPath(u *url.URL) string {
-	if !twitterHosts[strings.TrimPrefix(strings.ToLower(u.Hostname()), "www.")] {
+	if !links.TwitterHost(u.Hostname()) {
 		return ""
 	}
-	if m := tweetPath.FindStringSubmatch(u.Path); m != nil {
-		return "/status/" + m[1]
+	if id := links.TweetID(u.Path); id != "" {
+		return "/status/" + id
 	}
 	if m := profilePath.FindStringSubmatch(u.Path); m != nil && !notProfiles[strings.ToLower(m[1])] {
 		return "/" + m[1]

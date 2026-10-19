@@ -57,3 +57,39 @@ func TestDay(t *testing.T) {
 		t.Errorf("Day UTC = %q, want 2016-09-07", got)
 	}
 }
+
+func TestNormalizeSites(t *testing.T) {
+	tests := []struct{ in, want string }{
+		// The same tweet whatever the host, nick and sharing parameters.
+		{"https://x.com/someone/status/1234567890?t=abc&s=33", "x.com/i/status/1234567890"},
+		{"https://x.com/i/status/1234567890", "x.com/i/status/1234567890"},
+		{"https://twitter.com/Someone/status/1234567890/photo/1", "x.com/i/status/1234567890"},
+		{"https://mobile.twitter.com/someone/statuses/1234567890", "x.com/i/status/1234567890"},
+		{"https://fixupx.com/someone/status/1234567890", "x.com/i/status/1234567890"},
+		{"https://fxtwitter.com/i/web/status/1234567890", "x.com/i/status/1234567890"},
+		{"https://vxtwitter.com/someone/status/1234567890", "x.com/i/status/1234567890"},
+		{"https://twitter.com/someone?s=20", "x.com/someone"},
+		{"https://x.com/i/lists/123?t=x", "x.com/i/lists/123"},
+		// The same video whatever the form, without its playlist.
+		{"https://youtu.be/dQw4w9WgXcQ?si=abc", "youtube.com/watch?v=dQw4w9WgXcQ"},
+		{"https://youtu.be/dQw4w9WgXcQ?t=44", "youtube.com/watch?t=44&v=dQw4w9WgXcQ"},
+		{"https://m.youtube.com/watch?v=dQw4w9WgXcQ&feature=share", "youtube.com/watch?v=dQw4w9WgXcQ"},
+		{"https://www.youtube.com/shorts/dQw4w9WgXcQ", "youtube.com/watch?v=dQw4w9WgXcQ"},
+		{"https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=LL&index=4&t=44s&ab_channel=X&pp=y",
+			"youtube.com/watch?t=44s&v=dQw4w9WgXcQ"},
+		{"https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=PLabc", "youtube.com/watch?v=dQw4w9WgXcQ"},
+		{"https://www.youtube.com/watch?v=dQw4w9WgXcQ&lc=Ugw1", "youtube.com/watch?lc=Ugw1&v=dQw4w9WgXcQ"},
+		{"https://www.youtube.com/playlist?list=PLabc&si=x", "youtube.com/playlist?list=PLabc"},
+		{"https://m.youtube.com/@channel", "youtube.com/@channel"},
+	}
+	for _, tt := range tests {
+		got, err := Normalize(tt.in)
+		if err != nil {
+			t.Errorf("Normalize(%q): %v", tt.in, err)
+			continue
+		}
+		if got != tt.want {
+			t.Errorf("Normalize(%q) = %q, want %q", tt.in, got, tt.want)
+		}
+	}
+}

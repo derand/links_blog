@@ -44,7 +44,7 @@ func TestAddLink(t *testing.T) {
 	if res.Duplicate != store.NotDup || l.ID == 0 {
 		t.Fatalf("got dup=%v id=%d, want a new link", res.Duplicate, l.ID)
 	}
-	if l.URL != "https://www.Example.com/a/?utm_source=x" || l.Description != "Опис" {
+	if l.URL != "https://www.Example.com/a/" || l.Description != "Опис" {
 		t.Errorf("url=%q description=%q", l.URL, l.Description)
 	}
 	// 22:30 UTC is already the next day in Kyiv.
@@ -53,6 +53,35 @@ func TestAddLink(t *testing.T) {
 	}
 	if want := []string{"go", "sqlite"}; !reflect.DeepEqual(l.Tags, want) {
 		t.Errorf("tags = %q, want %q", l.Tags, want)
+	}
+}
+
+func TestAddLinkCanonical(t *testing.T) {
+	ctx := context.Background()
+	s, _ := newTest(t)
+
+	res, err := s.AddLink(ctx, NewLink{URL: "https://fixupx.com/i/status/123?s=20"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Link.URL != "https://x.com/i/status/123" {
+		t.Errorf("url = %q, want https://x.com/i/status/123", res.Link.URL)
+	}
+	// The same tweet by its author's nick.
+	res2, err := s.AddLink(ctx, NewLink{URL: "x.com/someone/status/123?t=abc"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res2.Duplicate != store.DupURL || res2.Link.ID != res.Link.ID {
+		t.Errorf("got dup=%v id=%d, want DupURL of %d", res2.Duplicate, res2.Link.ID, res.Link.ID)
+	}
+
+	edit, err := s.UpdateLink(ctx, LinkEdit{ID: res.Link.ID, URL: "https://youtu.be/dQw4w9WgXcQ?si=x", Day: res.Link.Day})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if edit.Link.URL != "https://youtu.be/dQw4w9WgXcQ" {
+		t.Errorf("edited url = %q", edit.Link.URL)
 	}
 }
 

@@ -176,7 +176,7 @@ func (s *Service) DeleteLink(ctx context.Context, id int64) (*store.Link, error)
 }
 
 // checkURL returns the URL to keep, with "https://" added if it has no
-// scheme, and its dedup key.
+// scheme and made links.Canonical, and its dedup key.
 func checkURL(raw string) (url, norm string, err error) {
 	url = strings.TrimSpace(raw)
 	norm, err = links.Normalize(url)
@@ -186,7 +186,7 @@ func checkURL(raw string) (url, norm string, err error) {
 	if !strings.Contains(url, "://") {
 		url = "https://" + url
 	}
-	return url, norm, nil
+	return links.Canonical(url), norm, nil
 }
 
 func checkDay(day string) error {
