@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -17,6 +18,8 @@ import (
 type postView struct {
 	ID              int64
 	URL, Host, Text string
+	Full            string // the whole text when Text is cut
+	Byline          string // a tweet's author when Text is the tweet
 	Day             string
 	Tags            []string
 	Hidden          bool
@@ -29,12 +32,62 @@ func newPostView(l *store.Link, showDate, editable bool) postView {
 	if u, err := url.Parse(l.URL); err == nil && u.Host != "" {
 		host = u.Host
 	}
-	text := l.Description
-	if text == "" {
-		text = l.Title
-	}
-	return postView{ID: l.ID, URL: l.URL, Host: host, Text: text, Day: l.Day, Tags: l.Tags, Hidden: l.Hidden,
+	v := postView{ID: l.ID, URL: l.URL, Host: host, Text: l.Description, Day: l.Day, Tags: l.Tags, Hidden: l.Hidden,
 		ShowDate: showDate, Editable: editable}
+	if v.Text != "" {
+		return v
+	}
+	// A tweet's title is only its author: show what it says instead.
+	if links.Tweet(l.URL) {
+		if text, cut := shortText(l.SiteDescription, maxPostText); text != "" {
+			v.Text, v.Byline = text, tweetAuthor(l.Title)
+			if cut {
+				v.Full = l.SiteDescription
+			}
+			return v
+		}
+	}
+	v.Text = l.Title
+	return v
+}
+
+// maxPostText keeps a fetched text to about a line of the feed.
+const maxPostText = 140
+
+var (
+	textURLRe   = regexp.MustCompile(`https?://\S+`)
+	tweetNickRe = regexp.MustCompile(`\(@(\w+)\)$`)
+)
+
+// shortText returns the first line of s with text in it, URLs dropped, cut
+// at a word to max runes, and whether anything was left out.
+func shortText(s string, max int) (string, bool) {
+	var line string
+	lines := strings.Split(s, "\n")
+	for len(lines) > 0 && line == "" {
+		line = strings.Join(strings.Fields(textURLRe.ReplaceAllString(lines[0], "")), " ")
+		lines = lines[1:]
+	}
+	cut := strings.TrimSpace(textURLRe.ReplaceAllString(strings.Join(lines, " "), "")) != ""
+	if r := []rune(line); len(r) > max {
+		line = string(r[:max])
+		if i := strings.LastIndexByte(line, ' '); i > 0 {
+			line = line[:i]
+		}
+		cut = true
+	}
+	if cut {
+		line = strings.TrimRight(line, " ,.:;-–—") + "…"
+	}
+	return line, cut
+}
+
+// tweetAuthor returns "@nick" from FxTwitter's "Name (@nick)" title.
+func tweetAuthor(title string) string {
+	if m := tweetNickRe.FindStringSubmatch(title); m != nil {
+		return "@" + m[1]
+	}
+	return title
 }
 
 type dayView struct {

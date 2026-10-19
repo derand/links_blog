@@ -151,3 +151,11 @@ func TestParseMessage(t *testing.T) {
 		})
 	}
 }
+
+func TestMatchEmbedsSkipsTweets(t *testing.T) {
+	got := MatchEmbeds([]string{"https://fixupx.com/a/status/1"},
+		[]Embed{{URL: "https://fixupx.com/a/status/1", Title: "FixupX", Description: "Sorry, that post doesn't exist :("}})
+	if got[0] != (Embed{}) {
+		t.Errorf("got %+v, want no metadata for a tweet", got[0])
+	}
+}

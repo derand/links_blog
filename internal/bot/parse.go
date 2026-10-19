@@ -228,6 +228,11 @@ func MatchEmbeds(urls []string, embeds []Embed) []Embed {
 	}
 	out := make([]Embed, len(urls))
 	for i, u := range urls {
+		if links.Tweet(u) {
+			// Mirrors' embeds carry Discord markup, reply counts and their own
+			// error pages; FxTwitter gives the plain text instead.
+			continue
+		}
 		norm, _ := links.Normalize(u)
 		e, ok := byNorm[norm]
 		if !ok && len(urls) == 1 && len(embeds) == 1 {

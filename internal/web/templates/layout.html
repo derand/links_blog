@@ -35,7 +35,8 @@
 {{define "post" -}}
 <div class="post{{if .Hidden}} hidden{{end}}" id="link-{{.ID}}">
   {{- if .ShowDate}}<span class="date"><a href="/{{.Day}}.html">{{.Day}}</a></span> {{end -}}
-  <a class="link" href="{{.URL}}">{{.Host}}</a>: <span class="description">{{.Text}}</span>
+  <a class="link" href="{{.URL}}">{{.Host}}</a>: <span class="description"{{with .Full}} title="{{.}}"{{end}}>{{.Text}}</span>
+  {{- with .Byline}} <span class="byline">— {{.}}</span>{{end -}}
   {{- range .Tags}} <a class="tag" href="/search?q={{tagQuery .}}">{{.}}</a>{{end -}}
   {{- if .Editable}} <a class="edit" href="/edit/{{.ID}}" title="Edit">edit</a>{{end -}}
 </div>

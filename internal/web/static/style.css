@@ -167,6 +167,8 @@ article {
 }
 .tag:hover { background: var(--hover); }
 
+.byline { color: var(--muted); font-size: 90%; }
+
 .hidden, .hidden .description { color: var(--muted); }
 
 .empty { color: var(--muted); }

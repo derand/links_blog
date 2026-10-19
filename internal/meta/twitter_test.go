@@ -44,6 +44,11 @@ func TestFetchTwitter(t *testing.T) {
 		w.Write([]byte(`{"code":200,"message":"OK","tweet":{"text":"just setting\nup my twttr",
 			"author":{"name":"jack","screen_name":"jack","description":"bio"}}}`))
 	})
+	mux.HandleFunc("/status/30", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"code":200,"message":"OK","tweet":{"text":"","author":{"name":"Ann","screen_name":"ann"},
+			"article":{"title":"How to scalp","preview_text":"A  long read"}}}`))
+	})
 	mux.HandleFunc("/jack", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.Write([]byte(`{"code":200,"message":"OK","user":{"name":"Jack D","screen_name":"jack","description":"no state"}}`))
@@ -91,7 +96,8 @@ func TestFetchTwitter(t *testing.T) {
 		url  string
 		want Metadata
 	}{
-		{"https://x.com/jack/status/20?s=20", Metadata{"jack (@jack)", "just setting up my twttr"}},
+		{"https://x.com/jack/status/20?s=20", Metadata{"jack (@jack)", "just setting\nup my twttr"}},
+		{"https://x.com/i/status/30", Metadata{"Ann (@ann)", "How to scalp\n\nA long read"}},
 		{"https://twitter.com/jack", Metadata{"Jack D (@jack)", "no state"}},
 		{"https://x.com/flaky", Metadata{"Soul Labs (@flaky)", "bio"}},
 	} {
@@ -114,5 +120,17 @@ func TestFetchTwitter(t *testing.T) {
 	// A profile's 404 is asked twice and is never taken as a deleted account.
 	if _, err := f.Fetch(ctx, "https://x.com/gone"); err == nil || Permanent(err) || gone != 2 {
 		t.Errorf("missing profile: %v, permanent %v, %d requests; want a retryable error after 2", err, Permanent(err), gone)
+	}
+}
+
+func TestKeepLines(t *testing.T) {
+	for in, want := range map[string]string{
+		"  one  two \n\n\n\nthree\n": "one two\n\nthree",
+		"\n\nfirst\n  \nsecond":      "first\n\nsecond",
+		"":                           "",
+	} {
+		if got := keepLines(100, in); got != want {
+			t.Errorf("keepLines(%q) = %q, want %q", in, got, want)
+		}
 	}
 }

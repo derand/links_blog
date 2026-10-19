@@ -12,6 +12,7 @@ import (
 	"regexp"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/derand/links_blog/internal/links"
 )
@@ -58,6 +59,11 @@ type fxResponse struct {
 	Tweet   *struct {
 		Text   string   `json:"text"`
 		Author fxAuthor `json:"author"`
+		// An X Article: a long post whose tweet has no text of its own.
+		Article *struct {
+			Title       string `json:"title"`
+			PreviewText string `json:"preview_text"`
+		} `json:"article"`
 	} `json:"tweet"`
 	User *fxAuthor `json:"user"`
 }
@@ -121,6 +127,9 @@ func (f *Fetcher) askFxTwitter(ctx context.Context, apiPath string) (Metadata, e
 	switch {
 	case r.Tweet != nil:
 		who, text = &r.Tweet.Author, r.Tweet.Text
+		if a := r.Tweet.Article; strings.TrimSpace(text) == "" && a != nil {
+			text = strings.TrimSpace(a.Title + "\n\n" + a.PreviewText)
+		}
 	case r.User != nil:
 		who, text = r.User, r.User.Description
 	default:
@@ -130,5 +139,29 @@ func (f *Fetcher) askFxTwitter(ctx context.Context, apiPath string) (Metadata, e
 	if who.ScreenName != "" {
 		title = strings.TrimSpace(title + " (@" + who.ScreenName + ")")
 	}
-	return Metadata{Title: first(maxTitle, title), Description: first(maxDesc, text)}, nil
+	return Metadata{Title: first(maxTitle, title), Description: keepLines(maxDesc, text)}, nil
+}
+
+// keepLines is first for a tweet's text: its lines stay, so that the first
+// one can stand for the tweet; runs of blank lines become one.
+func keepLines(max int, s string) string {
+	var out []string
+	blank := false
+	for _, l := range strings.Split(strings.ToValidUTF8(s, ""), "\n") {
+		l = strings.Join(strings.Fields(l), " ")
+		if l == "" {
+			blank = len(out) > 0
+			continue
+		}
+		if blank {
+			out = append(out, "")
+			blank = false
+		}
+		out = append(out, l)
+	}
+	v := strings.Join(out, "\n")
+	if utf8.RuneCountInString(v) > max {
+		v = string([]rune(v)[:max-1]) + "…"
+	}
+	return v
 }

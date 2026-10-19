@@ -30,6 +30,12 @@ func TweetID(path string) string {
 	return ""
 }
 
+// Tweet reports whether raw is a tweet's URL on x.com or one of its mirrors.
+func Tweet(raw string) bool {
+	u, err := url.Parse(strings.TrimSpace(raw))
+	return err == nil && TwitterHost(u.Hostname()) && TweetID(u.Path) != ""
+}
+
 // youtubeHosts are YouTube's hosts without "www.".
 var youtubeHosts = map[string]bool{
 	"youtube.com": true, "m.youtube.com": true, "youtu.be": true,
