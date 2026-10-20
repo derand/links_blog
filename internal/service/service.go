@@ -49,6 +49,7 @@ type NewLink struct {
 	At              time.Time // when the link was posted; zero means now
 	Source          string    // empty means "web"
 	SourceRef       string    // e.g. "channel_id:message_id"; unique within Source
+	AddedBy         string    // "<provider>:<user id>" of the author; empty means unknown
 }
 
 // LinkEdit is the new state of an existing link's editable fields.
@@ -120,6 +121,7 @@ func (s *Service) AddLink(ctx context.Context, in NewLink) (AddResult, error) {
 		Hidden:          in.Hidden || links.Private(rawURL),
 		Source:          in.Source,
 		SourceRef:       in.SourceRef,
+		AddedBy:         in.AddedBy,
 		Tags:            cleanTags(in.Tags),
 	}
 	if l.Source == "" {

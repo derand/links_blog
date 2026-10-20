@@ -16,7 +16,10 @@ import (
 	"github.com/derand/links_blog/internal/store"
 )
 
-const admin = "me@example.com"
+const (
+	admin    = "me@example.com"
+	adminSub = "42"
+)
 
 type site struct {
 	t    *testing.T
@@ -72,7 +75,7 @@ func (s *site) get(path string, signedIn bool) resp {
 	s.t.Helper()
 	req := httptest.NewRequest("GET", path, nil)
 	if signedIn {
-		req.AddCookie(s.auth.SessionCookie(admin))
+		req.AddCookie(s.auth.SessionCookie(admin, adminSub))
 	}
 	rec := httptest.NewRecorder()
 	s.h.ServeHTTP(rec, req)
@@ -252,7 +255,7 @@ func (s *site) post(path string, form url.Values, signedIn bool, hdr ...string) 
 		req.Header.Set(hdr[i], hdr[i+1])
 	}
 	if signedIn {
-		req.AddCookie(s.auth.SessionCookie(admin))
+		req.AddCookie(s.auth.SessionCookie(admin, adminSub))
 	}
 	rec := httptest.NewRecorder()
 	s.h.ServeHTTP(rec, req)

@@ -61,7 +61,7 @@ func TestHandle(t *testing.T) {
 	}
 	a := ls[0]
 	if a.URL != "https://a.example" || a.Description != "Цікаво" || !a.Hidden || a.Day != "2026-10-17" ||
-		a.SourceRef != "100:1001:0" || !reflect.DeepEqual(a.Tags, []string{"news", "go"}) {
+		a.SourceRef != "100:1001:0" || a.AddedBy != "discord:"+owner || !reflect.DeepEqual(a.Tags, []string{"news", "go"}) {
 		t.Errorf("first link: %+v", a)
 	}
 	if ls[1].Title != "B" {

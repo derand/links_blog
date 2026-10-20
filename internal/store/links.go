@@ -23,6 +23,7 @@ type Link struct {
 	Hidden          bool
 	Source          string
 	SourceRef       string // empty means none
+	AddedBy         string // "<provider>:<user id>", e.g. "google:<sub>"; empty means unknown
 	Tags            []string
 
 	// Fetching page metadata, see NextForMetadata.
@@ -69,12 +70,16 @@ func insertLink(ctx context.Context, tx *sql.Tx, l *Link) error {
 	if l.SourceRef != "" {
 		sourceRef = l.SourceRef
 	}
+	var addedBy any
+	if l.AddedBy != "" {
+		addedBy = l.AddedBy
+	}
 	res, err := tx.ExecContext(ctx, `
 		INSERT INTO links (url, url_norm, description, note, title, site_description,
-		                   day, created_at, updated_at, hidden, source, source_ref)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		                   day, created_at, updated_at, hidden, source, source_ref, added_by)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		l.URL, l.URLNorm, l.Description, l.Note, l.Title, l.SiteDescription,
-		l.Day, l.CreatedAt.Unix(), l.UpdatedAt.Unix(), l.Hidden, l.Source, sourceRef)
+		l.Day, l.CreatedAt.Unix(), l.UpdatedAt.Unix(), l.Hidden, l.Source, sourceRef, addedBy)
 	if err != nil {
 		return err
 	}

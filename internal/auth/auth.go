@@ -69,17 +69,18 @@ func (a *Auth) LoginEnabled() bool {
 
 type ctxKey struct{}
 
-// Middleware puts the signed-in email into the request context and extends
-// the session when half of it has passed.
+// Middleware puts the signed-in author into the request context and extends
+// the session when half of it has passed. Sessions without a Google subject
+// (made before it was kept) are ignored, so the author signs in again.
 func (a *Auth) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var s session
 		if c, err := r.Cookie(sessionCookie); err == nil && a.decode(c.Value, &s) == nil &&
-			a.now().Unix() < s.Exp && slices.Contains(a.cfg.Admins, s.Email) {
+			a.now().Unix() < s.Exp && s.Sub != "" && slices.Contains(a.cfg.Admins, s.Email) {
 			if time.Unix(s.Exp, 0).Sub(a.now()) < a.cfg.SessionTTL/2 {
-				http.SetCookie(w, a.SessionCookie(s.Email))
+				http.SetCookie(w, a.SessionCookie(s.Email, s.Sub))
 			}
-			r = r.WithContext(context.WithValue(r.Context(), ctxKey{}, s.Email))
+			r = r.WithContext(context.WithValue(r.Context(), ctxKey{}, s))
 		}
 		next.ServeHTTP(w, r)
 	})
@@ -87,19 +88,31 @@ func (a *Auth) Middleware(next http.Handler) http.Handler {
 
 // User returns the signed-in author's email, or "" for a visitor.
 func User(ctx context.Context) string {
-	email, _ := ctx.Value(ctxKey{}).(string)
-	return email
+	s, _ := ctx.Value(ctxKey{}).(session)
+	return s.Email
+}
+
+// UserID returns the signed-in author's stable ID, "google:<sub>", or "" for
+// a visitor. Unlike the email, it never changes for a Google account.
+func UserID(ctx context.Context) string {
+	s, _ := ctx.Value(ctxKey{}).(session)
+	if s.Sub == "" {
+		return ""
+	}
+	return "google:" + s.Sub
 }
 
 type session struct {
 	Email string `json:"e"`
+	Sub   string `json:"s"` // Google account ID, the ID token's subject
 	Exp   int64  `json:"x"`
 }
 
-// SessionCookie returns a fresh session cookie for email.
-func (a *Auth) SessionCookie(email string) *http.Cookie {
+// SessionCookie returns a fresh session cookie for the Google account sub
+// with the given email.
+func (a *Auth) SessionCookie(email, sub string) *http.Cookie {
 	exp := a.now().Add(a.cfg.SessionTTL)
-	return a.cookie(sessionCookie, a.encode(session{Email: strings.ToLower(email), Exp: exp.Unix()}), exp)
+	return a.cookie(sessionCookie, a.encode(session{Email: strings.ToLower(email), Sub: sub, Exp: exp.Unix()}), exp)
 }
 
 func (a *Auth) cookie(name, value string, exp time.Time) *http.Cookie {
@@ -246,12 +259,12 @@ func (a *Auth) callback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	email := strings.ToLower(claims.Email)
-	if !claims.Verified || !slices.Contains(a.cfg.Admins, email) {
+	if !claims.Verified || idt.Subject == "" || !slices.Contains(a.cfg.Admins, email) {
 		slog.Warn("sign-in refused", "email", email)
 		http.Error(w, "You don't have permissions on this site.", http.StatusForbidden)
 		return
 	}
-	slog.Info("signed in", "email", email)
-	http.SetCookie(w, a.SessionCookie(email))
+	slog.Info("signed in", "email", email, "sub", idt.Subject)
+	http.SetCookie(w, a.SessionCookie(email, idt.Subject))
 	http.Redirect(w, r, "/", http.StatusFound)
 }

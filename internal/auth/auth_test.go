@@ -55,7 +55,7 @@ func TestNewValidates(t *testing.T) {
 
 func TestSession(t *testing.T) {
 	a := newTest(t)
-	c := a.SessionCookie("me@example.com")
+	c := a.SessionCookie("me@example.com", "42")
 	if !c.HttpOnly || !c.Secure || c.SameSite != http.SameSiteLaxMode {
 		t.Errorf("cookie flags: %+v", c)
 	}
@@ -65,10 +65,23 @@ func TestSession(t *testing.T) {
 	if user, _ := whoami(a); user != "" {
 		t.Errorf("no cookie: user %q", user)
 	}
+	h := a.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if id := UserID(r.Context()); id != "google:42" {
+			t.Errorf("UserID = %q", id)
+		}
+	}))
+	req := httptest.NewRequest("GET", "/", nil)
+	req.AddCookie(c)
+	h.ServeHTTP(httptest.NewRecorder(), req)
+
+	// A session from before the subject was kept.
+	if user, _ := whoami(a, a.SessionCookie("me@example.com", "")); user != "" {
+		t.Error("session without subject accepted")
+	}
 
 	// Tampered payload or signature.
 	p, sig, _ := strings.Cut(c.Value, ".")
-	other := a.encode(session{Email: "me@example.com", Exp: 1 << 40})
+	other := a.encode(session{Email: "me@example.com", Sub: "42", Exp: 1 << 40})
 	op, _, _ := strings.Cut(other, ".")
 	for _, v := range []string{op + "." + sig, p + "." + sig[1:] + "A", p, "garbage"} {
 		if user, _ := whoami(a, &http.Cookie{Name: sessionCookie, Value: v}); user != "" {
@@ -78,12 +91,12 @@ func TestSession(t *testing.T) {
 
 	// Signed with another secret.
 	b, _ := New(Config{Admins: []string{"me@example.com"}, Secret: []byte(strings.Repeat("x", 32))})
-	if user, _ := whoami(a, b.SessionCookie("me@example.com")); user != "" {
+	if user, _ := whoami(a, b.SessionCookie("me@example.com", "42")); user != "" {
 		t.Error("cookie from another secret accepted")
 	}
 
 	// Not an admin any more.
-	if user, _ := whoami(a, a.SessionCookie("someone@example.com")); user != "" {
+	if user, _ := whoami(a, a.SessionCookie("someone@example.com", "43")); user != "" {
 		t.Error("non-admin accepted")
 	}
 }
@@ -92,7 +105,7 @@ func TestSessionExpiryAndRenewal(t *testing.T) {
 	a := newTest(t)
 	start := time.Now()
 	a.now = func() time.Time { return start }
-	c := a.SessionCookie("me@example.com")
+	c := a.SessionCookie("me@example.com", "42")
 
 	a.now = func() time.Time { return start.Add(6 * 24 * time.Hour) }
 	user, rec := whoami(a, c)

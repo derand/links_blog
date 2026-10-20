@@ -145,6 +145,7 @@ func (s *Server) add(w http.ResponseWriter, r *http.Request) {
 			Tags:        strings.Split(f.Tags, ","),
 			Hidden:      f.Hidden,
 			Day:         f.Day,
+			AddedBy:     auth.UserID(r.Context()),
 		})
 	}
 	if s.saveFailed(w, r, "add", data, f, res, err) {

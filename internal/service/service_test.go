@@ -36,6 +36,7 @@ func TestAddLink(t *testing.T) {
 		Description: "  Опис  ",
 		Tags:        []string{"#go", " ", "Go", "sqlite"},
 		Hidden:      true,
+		AddedBy:     "google:42",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -50,6 +51,9 @@ func TestAddLink(t *testing.T) {
 	// 22:30 UTC is already the next day in Kyiv.
 	if l.Day != "2026-10-17" || l.Source != "web" || !l.Hidden {
 		t.Errorf("day=%q source=%q hidden=%v", l.Day, l.Source, l.Hidden)
+	}
+	if got, err := s.st.LinkByID(ctx, l.ID); err != nil || got.AddedBy != "google:42" {
+		t.Errorf("stored added_by: %+v, %v", got, err)
 	}
 	if want := []string{"go", "sqlite"}; !reflect.DeepEqual(l.Tags, want) {
 		t.Errorf("tags = %q, want %q", l.Tags, want)

@@ -158,6 +158,7 @@ func (b *Bot) handle(ctx context.Context, m *discordgo.Message) handled {
 			At:              m.Timestamp,
 			Source:          platform,
 			SourceRef:       fmt.Sprintf("%s:%d", messageRef(m), i),
+			AddedBy:         platform + ":" + m.Author.ID,
 		})
 		switch {
 		case err != nil:
