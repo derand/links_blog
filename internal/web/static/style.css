@@ -15,6 +15,7 @@
   --error: #c62828;
   --danger: #c62828;
   --danger-hover: #a31f1f;
+  --footer-text: #444444;
   color-scheme: light;
 }
 
@@ -32,8 +33,9 @@
     --input-border: #55555b;
     --input-bg: #232326;
     --error: #ef7d7d;
-  --danger: #b3261e;
-  --danger-hover: #d0362c;
+    --danger: #b3261e;
+    --danger-hover: #d0362c;
+    --footer-text: #aaaaaa;
     color-scheme: dark;
   }
 }
@@ -117,7 +119,7 @@ main { flex: 1; }
   border-top: 2px solid var(--bar-border);
   margin-top: 1em;
   padding: 5px 0;
-  color: #aaa;
+  color: var(--footer-text);
   font-size: 0.65em;
   text-align: center;
 }
