@@ -274,7 +274,7 @@ func TestAddForm(t *testing.T) {
 	}
 	r := s.get("/add?url=example.org/x&description=Hi+there", true)
 	r.has(t, "GET /add", `value="example.org/x"`, ">Hi there</textarea>", `list="form-tag-list"`,
-		`<option value="common"><option value="neural network"></datalist>`, `src="/static/tags.js?v=`)
+		`<option value="common"><option value="neural network"></datalist>`, `src="/static/forms.js?v=`)
 
 	form := url.Values{"url": {" example.org/new "}, "description": {"New <thing>"}, "tags": {"go, Common ,,go"},
 		"day": {"2020-01-05"}, "hidden": {"on"}}

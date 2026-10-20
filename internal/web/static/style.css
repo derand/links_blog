@@ -13,6 +13,8 @@
   --input-border: #999999;
   --input-bg: #ffffff;
   --error: #c62828;
+  --danger: #c62828;
+  --danger-hover: #a31f1f;
   color-scheme: light;
 }
 
@@ -30,6 +32,8 @@
     --input-border: #55555b;
     --input-bg: #232326;
     --error: #ef7d7d;
+  --danger: #b3261e;
+  --danger-hover: #d0362c;
     color-scheme: dark;
   }
 }
@@ -256,7 +260,20 @@ article {
 .form-hint { font-size: 70%; color: var(--muted); }
 .link-info { margin: 1.5em 0 0; }
 .delete-form { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 8px 0; }
-.delete-form button { font: inherit; }
+.delete-form button {
+  font: inherit; color: #ffffff; background: var(--danger);
+  border: 1px solid var(--danger); border-radius: 4px; padding: 3px 12px; cursor: pointer;
+}
+.delete-form button:hover, .delete-form button:focus-visible { background: var(--danger-hover); border-color: var(--danger-hover); }
+/* The edit form shares its label column with the info and delete form below. */
+.edit-layout {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  column-gap: 10px;
+  max-width: 700px;
+}
+.edit-layout > .link-form { grid-column: 1 / -1; grid-template-columns: subgrid; max-width: none; }
+.edit-layout > .link-info, .edit-layout > .delete-form { grid-column: 2; }
 
 .edit, .edit:visited {
   margin-left: 4px;
@@ -267,6 +284,8 @@ article {
 @media (max-width: 600px) {
   .link-form { grid-template-columns: minmax(0, 1fr); gap: 2px; }
   .link-form > label { text-align: left; margin-top: 4px; }
+  .edit-layout { grid-template-columns: minmax(0, 1fr); }
+  .edit-layout > .link-info, .edit-layout > .delete-form { grid-column: 1; }
 }
 
 /* Error pages */

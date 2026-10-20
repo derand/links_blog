@@ -11,3 +11,17 @@
       .map(function (t) { return new Option("", head + t); }));
   });
 })();
+
+// Asks before deleting a link; the server refuses the form without the
+// confirmation this fills in.
+(function () {
+  var form = document.querySelector(".delete-form");
+  if (!form) return;
+  form.addEventListener("submit", function (e) {
+    if (confirm("Delete this link?")) {
+      form.elements.confirm.value = "yes";
+    } else {
+      e.preventDefault();
+    }
+  });
+})();
