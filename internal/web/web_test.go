@@ -262,7 +262,10 @@ func (s *site) post(path string, form url.Values, signedIn bool, hdr ...string) 
 func TestAddForm(t *testing.T) {
 	s := newSite(t)
 
-	s.get("/", false).hasNot(t, "/ signed out", `action="/add"`, "add link")
+	s.get("/", false).hasNot(t, "/ signed out", `action="/add"`, "add link", "form-tag-list", `value="common"`)
+	s.get("/2020-01-05.html", false).hasNot(t, "day signed out", "form-tag-list", `value="common"`)
+	s.get("/add", false).hasNot(t, "GET /add signed out", "form-tag-list", `value="common"`)
+	s.get("/edit/1", false).hasNot(t, "GET /edit signed out", "form-tag-list", `value="common"`)
 	s.get("/", true).has(t, "/ signed in", `<details class="add-link">`, `action="/add"`, `name="day" type="date" value=""`, `href="/add"`)
 	s.get("/2020-01-05.html", true).has(t, "day", `name="day" type="date" value="2020-01-05"`)
 
@@ -270,7 +273,8 @@ func TestAddForm(t *testing.T) {
 		t.Errorf("GET /add signed out: %d", r.code)
 	}
 	r := s.get("/add?url=example.org/x&description=Hi+there", true)
-	r.has(t, "GET /add", `value="example.org/x"`, ">Hi there</textarea>")
+	r.has(t, "GET /add", `value="example.org/x"`, ">Hi there</textarea>", `list="form-tag-list"`,
+		`<option value="common"><option value="neural network"></datalist>`, `src="/static/tags.js?v=`)
 
 	form := url.Values{"url": {" example.org/new "}, "description": {"New <thing>"}, "tags": {"go, Common ,,go"},
 		"day": {"2020-01-05"}, "hidden": {"on"}}

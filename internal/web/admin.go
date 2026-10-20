@@ -1,8 +1,10 @@
 package web
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
@@ -23,12 +25,23 @@ type linkForm struct {
 	Note                        string
 	Title, SiteDescription      string
 	Hidden                      bool
+	TagNames                    []string // known tags to suggest
 	Error                       string
 	Existing                    *postView
 }
 
-func newAddForm() *linkForm {
-	return &linkForm{Action: "/add", Submit: "Add link"}
+func (s *Server) newAddForm(ctx context.Context) *linkForm {
+	return &linkForm{Action: "/add", Submit: "Add link", TagNames: s.tagNames(ctx)}
+}
+
+// tagNames returns the tags to suggest in the form; without them the form
+// still works, so an error is only logged.
+func (s *Server) tagNames(ctx context.Context) []string {
+	names, err := s.store.TagNames(ctx)
+	if err != nil {
+		slog.Error("tag names", "err", err)
+	}
+	return names
 }
 
 type addPage struct {
@@ -106,7 +119,7 @@ func (s *Server) addPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	q := r.URL.Query()
-	f := newAddForm()
+	f := s.newAddForm(r.Context())
 	f.URL, f.Description, f.Tags, f.Day = q.Get("url"), q.Get("description"), q.Get("tags"), q.Get("day")
 	s.render(w, http.StatusOK, "add", addPage{page: s.page(r, "Add link"), Form: f})
 }
@@ -116,7 +129,7 @@ func (s *Server) add(w http.ResponseWriter, r *http.Request) {
 	if !s.requireUser(w, r) {
 		return
 	}
-	data := addPage{page: s.page(r, "Add link"), Form: newAddForm()}
+	data := addPage{page: s.page(r, "Add link"), Form: s.newAddForm(r.Context())}
 	f := data.Form
 	if !s.parseForm(w, r, f) {
 		return
@@ -163,8 +176,9 @@ func (s *Server) linkParam(w http.ResponseWriter, r *http.Request) (*store.Link,
 func (s *Server) newEditPage(r *http.Request, l *store.Link) editPage {
 	const layout = "2006-01-02 15:04"
 	return editPage{
-		page:    s.page(r, "Edit link"),
-		Form:    &linkForm{Action: fmt.Sprintf("/edit/%d", l.ID), Submit: "Save", Edit: true},
+		page: s.page(r, "Edit link"),
+		Form: &linkForm{Action: fmt.Sprintf("/edit/%d", l.ID), Submit: "Save", Edit: true,
+			TagNames: s.tagNames(r.Context())},
 		ID:      l.ID,
 		Created: l.CreatedAt.In(s.loc).Format(layout),
 		Updated: l.UpdatedAt.In(s.loc).Format(layout),

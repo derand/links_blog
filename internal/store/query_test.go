@@ -157,3 +157,15 @@ func TestSearchPaging(t *testing.T) {
 		t.Errorf("past the end = %v (total %d)", urls(ls), total)
 	}
 }
+
+func TestTagNames(t *testing.T) {
+	s := openTest(t)
+	seed(t, s)
+	names, err := s.TagNames(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{"go", "development", "neural network"}; !reflect.DeepEqual(names, want) {
+		t.Errorf("TagNames = %v; want %v", names, want)
+	}
+}

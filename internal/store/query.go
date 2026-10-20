@@ -184,3 +184,23 @@ func (s *Store) loadTags(ctx context.Context, byID map[int64]*Link) error {
 	}
 	return rows.Err()
 }
+
+// TagNames returns all tag names, the most used first.
+func (s *Store) TagNames(ctx context.Context) ([]string, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT t.name FROM tags t JOIN link_tags lt ON lt.tag_id = t.id
+		 GROUP BY t.id ORDER BY count(*) DESC, t.name`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var names []string
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			return nil, err
+		}
+		names = append(names, name)
+	}
+	return names, rows.Err()
+}

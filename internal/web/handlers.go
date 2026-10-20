@@ -153,7 +153,7 @@ func (s *Server) index(w http.ResponseWriter, r *http.Request) {
 	}
 	data := indexPage{page: s.page(r, ""), Days: groupByDay(ls, withHidden)}
 	if withHidden {
-		data.AddForm = newAddForm()
+		data.AddForm = s.newAddForm(ctx)
 	}
 	if pages > 1 {
 		data.Pagination = pagination(pg, pages, 2, func(i int) string {
@@ -195,7 +195,7 @@ func (s *Server) day(w http.ResponseWriter, r *http.Request, day string) {
 	days := groupByDay(ls, signedIn)
 	data := indexPage{page: s.page(r, days[0].Human), Days: days, OneDay: true}
 	if signedIn {
-		data.AddForm = newAddForm()
+		data.AddForm = s.newAddForm(r.Context())
 		data.AddForm.Day = day
 	}
 	s.render(w, http.StatusOK, "index", data)

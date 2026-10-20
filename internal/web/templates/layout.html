@@ -63,7 +63,12 @@
   <textarea id="form-site-description" name="site_description" rows="2">{{.SiteDescription}}</textarea>
   {{- end}}
   <label for="form-tags">Tags</label>
-  <input id="form-tags" name="tags" value="{{.Tags}}" placeholder="comma separated" autocomplete="off">
+  <input id="form-tags" name="tags" value="{{.Tags}}" placeholder="comma separated" autocomplete="off"
+    {{- if .TagNames}} list="form-tag-list"{{end}}>
+  {{- with .TagNames}}
+  <datalist id="form-tag-list">{{range .}}<option value="{{.}}">{{end}}</datalist>
+  <script src="{{static "tags.js"}}" defer></script>
+  {{- end}}
   <label for="form-day">Day</label>
   {{- if .Edit}}
   <span class="form-row"><input id="form-day" name="day" type="date" value="{{.Day}}" required></span>
