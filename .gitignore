@@ -15,6 +15,9 @@ credentials.env
 run.sh
 test.py
 
-plan.md
 # Deployment settings and secrets
 .env
+
+# Developer notes
+dev_notes.md
+plan.md
