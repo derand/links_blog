@@ -89,6 +89,27 @@ func TestAddLinkCanonical(t *testing.T) {
 	}
 }
 
+func TestAddLinkSiteAuthor(t *testing.T) {
+	ctx := context.Background()
+	s, _ := newTest(t)
+	for _, tc := range []struct{ url, given, want string }{
+		{"https://x.com/EthanDeFi_/status/2104919895792386342", "", "EthanDeFi_"},
+		{"https://fixupx.com/jack/status/20", "", "jack"},
+		{"https://x.com/i/status/21", "", ""},
+		{"https://x.com/i/status/22", " @ann ", "ann"},
+		{"https://x.com/jack/status/23", "someone", "someone"},
+		{"https://example.com/jack/status/24", "", ""},
+	} {
+		res, err := s.AddLink(ctx, NewLink{URL: tc.url, SiteAuthor: tc.given})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if res.Link.SiteAuthor != tc.want {
+			t.Errorf("%s: site author %q, want %q", tc.url, res.Link.SiteAuthor, tc.want)
+		}
+	}
+}
+
 func TestAddLinkPrivate(t *testing.T) {
 	ctx := context.Background()
 	s, _ := newTest(t)

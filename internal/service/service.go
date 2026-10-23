@@ -43,6 +43,7 @@ type NewLink struct {
 	Note            string // author's full text if Description is its beginning
 	Title           string // page metadata, if already known
 	SiteDescription string
+	SiteAuthor      string // empty: a tweet's nick from its URL
 	Tags            []string
 	Hidden          bool
 	Day             string    // YYYY-MM-DD; empty means the day of At
@@ -60,6 +61,7 @@ type LinkEdit struct {
 	Note            string
 	Title           string
 	SiteDescription string
+	SiteAuthor      string
 	Tags            []string
 	Hidden          bool
 	Day             string // YYYY-MM-DD
@@ -116,6 +118,7 @@ func (s *Service) AddLink(ctx context.Context, in NewLink) (AddResult, error) {
 		Note:            strings.TrimSpace(in.Note),
 		Title:           strings.TrimSpace(in.Title),
 		SiteDescription: strings.TrimSpace(in.SiteDescription),
+		SiteAuthor:      cleanNick(in.SiteAuthor),
 		Day:             day,
 		CreatedAt:       at,
 		Hidden:          in.Hidden || links.Private(rawURL),
@@ -126,6 +129,10 @@ func (s *Service) AddLink(ctx context.Context, in NewLink) (AddResult, error) {
 	}
 	if l.Source == "" {
 		l.Source = "web"
+	}
+	if l.SiteAuthor == "" {
+		// Known without asking anyone; FxTwitter adds it for /i/status/<id>.
+		l.SiteAuthor = links.TweetNick(rawURL)
 	}
 	got, dup, err := s.st.AddLink(ctx, l)
 	if err != nil {
@@ -156,6 +163,7 @@ func (s *Service) UpdateLink(ctx context.Context, in LinkEdit) (AddResult, error
 		Note:            strings.TrimSpace(in.Note),
 		Title:           strings.TrimSpace(in.Title),
 		SiteDescription: strings.TrimSpace(in.SiteDescription),
+		SiteAuthor:      cleanNick(in.SiteAuthor),
 		Day:             day,
 		Hidden:          in.Hidden,
 		Tags:            cleanTags(in.Tags),
@@ -212,6 +220,11 @@ func cleanTags(tags []string) []string {
 		out = append(out, t)
 	}
 	return out
+}
+
+// cleanNick trims a site author's nick and a leading "@".
+func cleanNick(s string) string {
+	return strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(s), "@"))
 }
 
 func (s *Service) MessageLinks(ctx context.Context, source, messageRef string) ([]*store.Link, error) {

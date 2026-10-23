@@ -13,7 +13,7 @@ var twitterHosts = map[string]bool{
 	"fxtwitter.com": true, "fixupx.com": true, "vxtwitter.com": true, "fixvx.com": true,
 }
 
-var tweetPath = regexp.MustCompile(`^/(?:[A-Za-z0-9_]{1,15}|i(?:/web)?)/status(?:es)?/(\d{1,20})(?:/|$)`)
+var tweetPath = regexp.MustCompile(`^/([A-Za-z0-9_]{1,15}|i(?:/web)?)/status(?:es)?/(\d{1,20})(?:/|$)`)
 
 // TwitterHost reports whether host (any case, with or without "www.") serves
 // x.com's pages.
@@ -25,6 +25,19 @@ func TwitterHost(host string) bool {
 // /<nick>/status/<id>, /i/status/<id>, /i/web/status/<id>; "" otherwise.
 func TweetID(path string) string {
 	if m := tweetPath.FindStringSubmatch(path); m != nil {
+		return m[2]
+	}
+	return ""
+}
+
+// TweetNick returns the author's nick from a tweet's URL, /<nick>/status/<id>;
+// "" for /i/status/<id> and anything but a tweet.
+func TweetNick(raw string) string {
+	u, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil || !TwitterHost(u.Hostname()) {
+		return ""
+	}
+	if m := tweetPath.FindStringSubmatch(u.Path); m != nil && m[1] != "i" && m[1] != "i/web" {
 		return m[1]
 	}
 	return ""

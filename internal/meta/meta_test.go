@@ -21,19 +21,19 @@ func TestParse(t *testing.T) {
 			<meta name="description" content="plain desc">
 			<meta property="og:title" content="OG &amp; title">
 			<meta property="og:description" content="  OG
-			  desc ">`, Metadata{"OG & title", "OG desc"}},
+			  desc ">`, Metadata{"OG & title", "OG desc", ""}},
 		{"twitter", `<head><title>Plain</title><meta name="twitter:title" content="TW">
 			<meta name="twitter:description" content="tw desc"><meta name="description" content="plain">`,
-			Metadata{"TW", "tw desc"}},
+			Metadata{"TW", "tw desc", ""}},
 		{"plain", `<!doctype html><title> A  <b>title</b>
-			</title><META NAME="Description" CONTENT="d">`, Metadata{"A <b>title</b>", "d"}},
-		{"empty og falls back", `<title>T</title><meta property="og:title" content=" ">`, Metadata{"T", ""}},
+			</title><META NAME="Description" CONTENT="d">`, Metadata{"A <b>title</b>", "d", ""}},
+		{"empty og falls back", `<title>T</title><meta property="og:title" content=" ">`, Metadata{"T", "", ""}},
 		{"first meta wins", `<meta property="og:title" content="one"><meta property="og:title" content="two">`,
-			Metadata{"one", ""}},
+			Metadata{"one", "", ""}},
 		{"stops at body", `<head><title>T</title></head><body><meta name="description" content="late">`,
-			Metadata{"T", ""}},
+			Metadata{"T", "", ""}},
 		{"svg title in body ignored", `<body><svg><title>icon</title></svg>`, Metadata{}},
-		{"long", `<title>` + strings.Repeat("я", 400) + `</title>`, Metadata{strings.Repeat("я", 299) + "…", ""}},
+		{"long", `<title>` + strings.Repeat("я", 400) + `</title>`, Metadata{strings.Repeat("я", 299) + "…", "", ""}},
 	} {
 		if got, err := parse(strings.NewReader(tc.page)).metadata(nil); err != nil || got != tc.want {
 			t.Errorf("%s: got %+v, %v, want %+v", tc.name, got, err, tc.want)
@@ -129,10 +129,10 @@ func TestFetch(t *testing.T) {
 	ctx := context.Background()
 	f := newFetcher(300*time.Millisecond, allowAll)
 	for path, want := range map[string]Metadata{
-		"/page":         {"Page", "About"},
-		"/redirect":     {"Page", "About"},
-		"/cp1251":       {"Привіт", ""},
-		"/meta-charset": {"Привіт", ""},
+		"/page":         {"Page", "About", ""},
+		"/redirect":     {"Page", "About", ""},
+		"/cp1251":       {"Привіт", "", ""},
+		"/meta-charset": {"Привіт", "", ""},
 		"/pdf":          {},
 		"/big":          {},
 	} {

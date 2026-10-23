@@ -96,10 +96,10 @@ func TestFetchTwitter(t *testing.T) {
 		url  string
 		want Metadata
 	}{
-		{"https://x.com/jack/status/20?s=20", Metadata{"jack (@jack)", "just setting\nup my twttr"}},
-		{"https://x.com/i/status/30", Metadata{"Ann (@ann)", "How to scalp\n\nA long read"}},
-		{"https://twitter.com/jack", Metadata{"Jack D (@jack)", "no state"}},
-		{"https://x.com/flaky", Metadata{"Soul Labs (@flaky)", "bio"}},
+		{"https://x.com/jack/status/20?s=20", Metadata{"jack (@jack)", "just setting\nup my twttr", "jack"}},
+		{"https://x.com/i/status/30", Metadata{"Ann (@ann)", "How to scalp\n\nA long read", "ann"}},
+		{"https://twitter.com/jack", Metadata{"Jack D (@jack)", "no state", "jack"}},
+		{"https://x.com/flaky", Metadata{"Soul Labs (@flaky)", "bio", "flaky"}},
 	} {
 		if got, err := f.Fetch(ctx, tc.url); err != nil || got != tc.want {
 			t.Errorf("%s: %+v, %v; want %+v", tc.url, got, err, tc.want)

@@ -17,6 +17,7 @@ type Link struct {
 	Note            string // the author's full text if Description is its beginning
 	Title           string
 	SiteDescription string
+	SiteAuthor      string // who wrote what the link points to, e.g. a tweet's author nick without "@"
 	Day             string // YYYY-MM-DD
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
@@ -75,10 +76,10 @@ func insertLink(ctx context.Context, tx *sql.Tx, l *Link) error {
 		addedBy = l.AddedBy
 	}
 	res, err := tx.ExecContext(ctx, `
-		INSERT INTO links (url, url_norm, description, note, title, site_description,
+		INSERT INTO links (url, url_norm, description, note, title, site_description, site_author,
 		                   day, created_at, updated_at, hidden, source, source_ref, added_by)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		l.URL, l.URLNorm, l.Description, l.Note, l.Title, l.SiteDescription,
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		l.URL, l.URLNorm, l.Description, l.Note, l.Title, l.SiteDescription, l.SiteAuthor,
 		l.Day, l.CreatedAt.Unix(), l.UpdatedAt.Unix(), l.Hidden, l.Source, sourceRef, addedBy)
 	if err != nil {
 		return err
@@ -236,9 +237,10 @@ func (s *Store) UpdateLink(ctx context.Context, l *Link) (*Link, Dup, error) {
 		       meta_error = CASE WHEN `+refetch+` THEN '' ELSE meta_error END,
 		       meta_failures = CASE WHEN `+refetch+` THEN 0 ELSE meta_failures END,
 		       url = ?1, url_norm = ?2, description = ?3, title = ?4, site_description = ?5,
-		       day = ?6, hidden = ?7, updated_at = ?8, note = ?10
+		       day = ?6, hidden = ?7, updated_at = ?8, note = ?10, site_author = ?11
 		 WHERE id = ?9`,
-		l.URL, l.URLNorm, l.Description, l.Title, l.SiteDescription, l.Day, l.Hidden, time.Now().Unix(), l.ID, l.Note)
+		l.URL, l.URLNorm, l.Description, l.Title, l.SiteDescription, l.Day, l.Hidden, time.Now().Unix(), l.ID, l.Note,
+		l.SiteAuthor)
 	if err != nil {
 		return nil, NotDup, err
 	}
@@ -349,22 +351,26 @@ type MetaResult struct {
 	Status          MetaStatus
 	Title           string // with MetaOK
 	SiteDescription string
+	SiteAuthor      string
 	Error           string // otherwise
 }
 
-// SaveMetadata records a metadata check of the link: MetaOK fills the title
-// and site description where they are empty, MetaError counts a failure.
+// SaveMetadata records a metadata check of the link: MetaOK fills the title,
+// site description and site author where they are empty, MetaError counts a
+// failure.
 func (s *Store) SaveMetadata(ctx context.Context, id int64, r MetaResult, now time.Time) error {
 	if r.Status == MetaOK {
 		_, err := s.db.ExecContext(ctx, `
 			UPDATE links
 			   SET title = CASE WHEN title = '' THEN ?1 ELSE title END,
 			       site_description = CASE WHEN site_description = '' THEN ?2 ELSE site_description END,
+			       site_author = CASE WHEN site_author = '' THEN ?5 ELSE site_author END,
 			       updated_at = CASE WHEN title = '' AND ?1 <> '' OR site_description = '' AND ?2 <> ''
+			                          OR site_author = '' AND ?5 <> ''
 			                    THEN ?3 ELSE updated_at END,
 			       meta_status = 'ok', meta_checked_at = ?3, meta_error = '', meta_failures = 0
 			 WHERE id = ?4`,
-			r.Title, r.SiteDescription, now.Unix(), id)
+			r.Title, r.SiteDescription, now.Unix(), id, r.SiteAuthor)
 		return err
 	}
 	_, err := s.db.ExecContext(ctx, `

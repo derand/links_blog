@@ -24,6 +24,7 @@ type linkForm struct {
 	URL, Description, Tags, Day string
 	Note                        string
 	Title, SiteDescription      string
+	SiteAuthor                  string
 	Hidden                      bool
 	TagNames                    []string // known tags to suggest
 	Error                       string
@@ -80,6 +81,7 @@ func (s *Server) parseForm(w http.ResponseWriter, r *http.Request, f *linkForm) 
 	f.Note = v.Get("note")
 	f.Title = v.Get("title")
 	f.SiteDescription = v.Get("site_description")
+	f.SiteAuthor = v.Get("site_author")
 	f.Tags = v.Get("tags")
 	f.Day = strings.TrimSpace(v.Get("day"))
 	f.Hidden = v.Get("hidden") != ""
@@ -218,6 +220,7 @@ func (s *Server) editPage(w http.ResponseWriter, r *http.Request) {
 	f := data.Form
 	f.URL, f.Description, f.Tags, f.Day = l.URL, l.Description, strings.Join(l.Tags, ", "), l.Day
 	f.Note, f.Title, f.SiteDescription, f.Hidden = l.Note, l.Title, l.SiteDescription, l.Hidden
+	f.SiteAuthor = l.SiteAuthor
 	s.render(w, http.StatusOK, "edit", data)
 }
 
@@ -247,6 +250,7 @@ func (s *Server) edit(w http.ResponseWriter, r *http.Request) {
 			Note:            f.Note,
 			Title:           f.Title,
 			SiteDescription: f.SiteDescription,
+			SiteAuthor:      f.SiteAuthor,
 			Tags:            strings.Split(f.Tags, ","),
 			Hidden:          f.Hidden,
 			Day:             f.Day,

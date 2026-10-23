@@ -28,9 +28,9 @@ const (
 // clients that ask too often (habr stopped answering at one request a second).
 var hostGap = 30 * time.Second
 
-// RunMetadata fills empty titles and site descriptions from the links' pages
-// until ctx is done: one page at a time, pause apart, each host at most once
-// per hostGap. New and edited links are picked up right away.
+// RunMetadata fills empty titles, site descriptions and site authors from
+// the links' pages until ctx is done: one page at a time, pause apart, each
+// host at most once per hostGap. New and edited links are picked up right away.
 func (s *Service) RunMetadata(ctx context.Context, f Fetcher, pause time.Duration) {
 	lastAsked := map[string]time.Time{} // host -> last request
 	for {
@@ -101,7 +101,8 @@ func (s *Service) fetchMetadata(ctx context.Context, f Fetcher, l *store.Link) {
 	if ctx.Err() != nil {
 		return // shutting down: not the page's fault
 	}
-	r := store.MetaResult{Status: store.MetaOK, Title: m.Title, SiteDescription: m.Description}
+	r := store.MetaResult{Status: store.MetaOK, Title: m.Title, SiteDescription: m.Description,
+		SiteAuthor: cleanNick(m.Author)}
 	if err != nil {
 		var blocked *meta.BlockedError
 		switch {

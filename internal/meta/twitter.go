@@ -74,7 +74,8 @@ type fxResponse struct {
 var profileRetry = time.Second
 
 // fetchTwitter asks FxTwitter about the tweet or profile at apiPath: the
-// title is "Name (@nick)", the description the tweet's text or the bio.
+// title is "Name (@nick)", the description the tweet's text or the bio, the
+// author the nick.
 func (f *Fetcher) fetchTwitter(ctx context.Context, apiPath string) (Metadata, error) {
 	m, err := f.askFxTwitter(ctx, apiPath)
 	var status *StatusError
@@ -139,7 +140,7 @@ func (f *Fetcher) askFxTwitter(ctx context.Context, apiPath string) (Metadata, e
 	if who.ScreenName != "" {
 		title = strings.TrimSpace(title + " (@" + who.ScreenName + ")")
 	}
-	return Metadata{Title: first(maxTitle, title), Description: keepLines(maxDesc, text)}, nil
+	return Metadata{Title: first(maxTitle, title), Description: keepLines(maxDesc, text), Author: who.ScreenName}, nil
 }
 
 // keepLines is first for a tweet's text: its lines stay, so that the first

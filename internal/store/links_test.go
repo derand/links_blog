@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -166,10 +167,17 @@ func TestMetadataQueue(t *testing.T) {
 		t.Fatalf("queue: %v", got)
 	}
 	// Success fills only what is empty.
-	save(half.ID, MetaResult{Status: MetaOK, Title: "Page title", SiteDescription: "Page desc"}, now)
+	save(half.ID, MetaResult{Status: MetaOK, Title: "Page title", SiteDescription: "Page desc", SiteAuthor: "ann"}, now)
 	l, _ := s.LinkByID(ctx, half.ID)
-	if l.Title != "Discord title" || l.SiteDescription != "Page desc" || l.MetaStatus != MetaOK || !l.MetaCheckedAt.Equal(now) {
+	if l.Title != "Discord title" || l.SiteDescription != "Page desc" || l.SiteAuthor != "ann" ||
+		l.MetaStatus != MetaOK || !l.MetaCheckedAt.Equal(now) {
 		t.Errorf("after success: %+v", l)
+	}
+	l.SiteAuthor = "by_hand"
+	s.UpdateLink(ctx, l)
+	save(half.ID, MetaResult{Status: MetaOK, SiteAuthor: "ann"}, now)
+	if l, _ = s.LinkByID(ctx, half.ID); l.SiteAuthor != "by_hand" {
+		t.Errorf("site author overwritten: %q", l.SiteAuthor)
 	}
 	// Blocked and dead links are not retried.
 	save(blocked.ID, MetaResult{Status: MetaBlocked, Error: "blocked: cloudflare challenge"}, now)
@@ -259,5 +267,60 @@ func TestSetLinkURLs(t *testing.T) {
 	}
 	if ls, _, err := s.Search(ctx, q, 0, 10, true); err != nil || len(ls) != 1 || ls[0].ID != a.ID {
 		t.Errorf("search: %v %+v", err, ls)
+	}
+}
+
+// TestSiteAuthorMigration runs 0006 on links saved before it: the nick comes
+// from the fetcher's "Name (@nick)" title, else from the tweet's URL.
+func TestSiteAuthorMigration(t *testing.T) {
+	ctx := context.Background()
+	path := filepath.Join(t.TempDir(), "test.db")
+	s, err := Open(ctx, path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.db.ExecContext(ctx, `ALTER TABLE links DROP COLUMN site_author; PRAGMA user_version = 5`); err != nil {
+		t.Fatal(err)
+	}
+	urls := map[string]string{ // url -> title
+		"https://x.com/i/status/1":       "Ann (@ann_1)",
+		"https://x.com/Bob/status/2":     "",
+		"https://x.com/Bob/status/3":     "Robert (@bob)", // the title wins: FxTwitter knows best
+		"https://x.com/i/status/4":       "",
+		"https://x.com/i/status/5":       "Not (@a nick)",
+		"https://x.com/carl":             "Carl (@carl)",
+		"https://example.com/x/status/6": "Ann (@ann_1)",
+	}
+	n := 0
+	for u, title := range urls {
+		n++
+		if _, err := s.db.ExecContext(ctx, `INSERT INTO links (url, url_norm, title, day, created_at, updated_at)
+			VALUES (?, ?, ?, '2026-10-19', 0, 0)`, u, fmt.Sprint(n), title); err != nil {
+			t.Fatal(err)
+		}
+	}
+	s.Close()
+
+	if s, err = Open(ctx, path); err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	want := map[string]string{
+		"https://x.com/i/status/1":       "ann_1",
+		"https://x.com/Bob/status/2":     "Bob",
+		"https://x.com/Bob/status/3":     "bob",
+		"https://x.com/i/status/4":       "",
+		"https://x.com/i/status/5":       "",
+		"https://x.com/carl":             "carl",
+		"https://example.com/x/status/6": "",
+	}
+	ls, err := s.queryLinks(ctx, ``)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, l := range ls {
+		if l.SiteAuthor != want[l.URL] {
+			t.Errorf("%s: site author %q, want %q", l.URL, l.SiteAuthor, want[l.URL])
+		}
 	}
 }

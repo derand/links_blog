@@ -117,7 +117,7 @@ func ftsExpr(terms []string) string {
 
 func (s *Store) queryLinks(ctx context.Context, tail string, args ...any) ([]*Link, error) {
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT l.id, l.url, l.url_norm, l.description, l.note, l.title, l.site_description,
+		SELECT l.id, l.url, l.url_norm, l.description, l.note, l.title, l.site_description, l.site_author,
 		       l.day, l.created_at, l.updated_at, l.hidden, l.source, l.source_ref, l.added_by,
 		       l.meta_status, l.meta_checked_at, l.meta_error, l.meta_failures
 		  FROM links l `+tail, args...)
@@ -137,7 +137,7 @@ func (s *Store) queryLinks(ctx context.Context, tail string, args ...any) ([]*Li
 			addedBy          sql.NullString
 			checked          int64
 		)
-		if err := rows.Scan(&l.ID, &l.URL, &l.URLNorm, &l.Description, &l.Note, &l.Title, &l.SiteDescription,
+		if err := rows.Scan(&l.ID, &l.URL, &l.URLNorm, &l.Description, &l.Note, &l.Title, &l.SiteDescription, &l.SiteAuthor,
 			&l.Day, &created, &updated, &l.Hidden, &l.Source, &sourceRef, &addedBy,
 			&l.MetaStatus, &checked, &l.MetaError, &l.MetaFailures); err != nil {
 			return nil, err

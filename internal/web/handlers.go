@@ -19,7 +19,7 @@ type postView struct {
 	ID              int64
 	URL, Host, Text string
 	Full            string // the whole text when Text is cut
-	Byline          string // a tweet's author when Text is the tweet
+	Byline          string // a tweet's author, "@nick"
 	Day             string
 	Tags            []string
 	Hidden          bool
@@ -34,30 +34,31 @@ func newPostView(l *store.Link, showDate, editable bool) postView {
 	}
 	v := postView{ID: l.ID, URL: l.URL, Host: host, Text: l.Description, Day: l.Day, Tags: l.Tags, Hidden: l.Hidden,
 		ShowDate: showDate, Editable: editable}
+	tweet := links.Tweet(l.URL)
+	if tweet && l.SiteAuthor != "" {
+		v.Byline = "@" + l.SiteAuthor
+	}
 	if v.Text != "" {
 		return v
 	}
 	// A tweet's title is only its author: show what it says instead.
-	if links.Tweet(l.URL) {
+	if tweet {
 		if text, cut := shortText(l.SiteDescription, maxPostText); text != "" {
-			v.Text, v.Byline = text, tweetAuthor(l.Title)
+			v.Text = text
 			if cut {
 				v.Full = l.SiteDescription
 			}
 			return v
 		}
 	}
-	v.Text = l.Title
+	v.Text, v.Byline = l.Title, ""
 	return v
 }
 
 // maxPostText keeps a fetched text to about a line of the feed.
 const maxPostText = 140
 
-var (
-	textURLRe   = regexp.MustCompile(`https?://\S+`)
-	tweetNickRe = regexp.MustCompile(`\(@(\w+)\)$`)
-)
+var textURLRe = regexp.MustCompile(`https?://\S+`)
 
 // shortText returns the first line of s with text in it, URLs dropped, cut
 // at a word to max runes, and whether anything was left out.
@@ -80,14 +81,6 @@ func shortText(s string, max int) (string, bool) {
 		line = strings.TrimRight(line, " ,.:;-–—") + "…"
 	}
 	return line, cut
-}
-
-// tweetAuthor returns "@nick" from FxTwitter's "Name (@nick)" title.
-func tweetAuthor(title string) string {
-	if m := tweetNickRe.FindStringSubmatch(title); m != nil {
-		return "@" + m[1]
-	}
-	return title
 }
 
 type dayView struct {

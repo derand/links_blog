@@ -38,6 +38,7 @@ const (
 type Metadata struct {
 	Title       string
 	Description string
+	Author      string // a tweet's author nick without "@"
 }
 
 // StatusError is returned when the page answers with a non-2xx status.
