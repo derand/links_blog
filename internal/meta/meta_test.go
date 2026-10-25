@@ -52,6 +52,12 @@ func TestGuardTitles(t *testing.T) {
 		{"https://arhivach.ng/thread/1/", `<title>arhivach.ng</title>`, "blocked"},
 		{"https://example.com/a", `<title>Just a moment...</title>`, "blocked"},
 		{"https://example.com/", `<title>Checking you are not a bot</title>`, "blocked"},
+		{"https://trac.ffmpeg.org/wiki/x", `<title>Making sure you&#39;re not a bot!</title>`, "blocked"},
+		{"https://pypi.python.org/pypi/Skype4Py/", `<title>Client Challenge</title>`, "blocked"},
+		{"https://packages.debian.org/jessie/i386/fontconfig/filelist", `<title>I Challenge Thee</title>`, "blocked"},
+		{"http://www.nightcoreuniverse.net/viewtopic.php?f=15", `<title>Bot Verification</title>`, "blocked"},
+		{"http://www.gensokyo.org", `<title>Redirecting...</title>`, "blocked"},
+		{"https://example.com/a", `<title>Redirecting stdout in Go</title>`, "Redirecting stdout in Go"},
 		// The site's name is fine on its home page, and a better title wins.
 		{"https://listen.moe/", `<title>LISTEN.moe</title>`, "LISTEN.moe"},
 		{"https://help.ubuntu.ru/wiki/x", `<meta property="og:title" content="Ubuntu"><title>Настройка сети</title>`, "Настройка сети"},

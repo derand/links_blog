@@ -49,6 +49,28 @@ func Tweet(raw string) bool {
 	return err == nil && TwitterHost(u.Hostname()) && TweetID(u.Path) != ""
 }
 
+// redditHosts serve Reddit's paths; hosts without "www.".
+var redditHosts = map[string]bool{
+	"reddit.com": true, "old.reddit.com": true, "new.reddit.com": true, "np.reddit.com": true, "m.reddit.com": true,
+}
+
+var redditPostPath = regexp.MustCompile(`^/r/[A-Za-z0-9_]+/comments/[a-z0-9]+(?:/|$)`)
+
+// RedditPost reports whether u is a Reddit post or a comment under one:
+// /r/<sub>/comments/<id>/...
+func RedditPost(u *url.URL) bool {
+	return redditHosts[strings.TrimPrefix(strings.ToLower(u.Hostname()), "www.")] && redditPostPath.MatchString(u.Path)
+}
+
+var tiktokPath = regexp.MustCompile(`^/@[A-Za-z0-9_.]+(?:/(?:video|photo)/\d+)?/?$`)
+
+// TikTokPage reports whether u is a TikTok profile, /@<nick>, or a post on
+// it, /@<nick>/video/<id> or /@<nick>/photo/<id>.
+func TikTokPage(u *url.URL) bool {
+	host := strings.TrimPrefix(strings.ToLower(u.Hostname()), "www.")
+	return (host == "tiktok.com" || host == "m.tiktok.com") && tiktokPath.MatchString(u.Path)
+}
+
 // youtubeHosts are YouTube's hosts without "www.".
 var youtubeHosts = map[string]bool{
 	"youtube.com": true, "m.youtube.com": true, "youtu.be": true,

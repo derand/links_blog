@@ -42,6 +42,10 @@ func TestPostViewText(t *testing.T) {
 		{"author unknown", store.Link{URL: tweet, Title: "Ann (@ann_1)", SiteDescription: "Tweet"}, "Tweet", "", ""},
 		{"tweet without text", store.Link{URL: tweet, Title: "Ann (@ann_1)", SiteAuthor: "ann_1"}, "Ann (@ann_1)", "", ""},
 		{"not a tweet", store.Link{URL: "https://example.com", Title: "Page", SiteDescription: "About", SiteAuthor: "someone"}, "Page", "", ""},
+		{"reddit post", store.Link{URL: "https://www.reddit.com/r/flask/comments/2321oc/x/", Title: "Host Flask", SiteAuthor: "executex"}, "Host Flask", "u/executex", ""},
+		{"tiktok profile", store.Link{URL: "https://www.tiktok.com/@zory", Title: "Zoryana", SiteAuthor: "zory"}, "Zoryana", "@zory", ""},
+		{"tiktok name is the nick", store.Link{URL: "https://www.tiktok.com/@flazerd", Title: "flazerd", SiteAuthor: "flazerd"}, "flazerd", "", ""},
+		{"subreddit", store.Link{URL: "https://www.reddit.com/r/flask/", Title: "r/flask", SiteAuthor: "someone"}, "r/flask", "", ""},
 	}
 	for _, tt := range tests {
 		v := newPostView(&tt.l, false, false)

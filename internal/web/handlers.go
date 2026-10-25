@@ -19,7 +19,7 @@ type postView struct {
 	ID              int64
 	URL, Host, Text string
 	Full            string // the whole text when Text is cut
-	Byline          string // a tweet's author, "@nick"
+	Byline          string // the author of a tweet, TikTok or Reddit post: "@nick", "u/nick"
 	Day             string
 	Tags            []string
 	Hidden          bool
@@ -35,9 +35,7 @@ func newPostView(l *store.Link, showDate, editable bool) postView {
 	v := postView{ID: l.ID, URL: l.URL, Host: host, Text: l.Description, Day: l.Day, Tags: l.Tags, Hidden: l.Hidden,
 		ShowDate: showDate, Editable: editable}
 	tweet := links.Tweet(l.URL)
-	if tweet && l.SiteAuthor != "" {
-		v.Byline = "@" + l.SiteAuthor
-	}
+	v.Byline = byline(l.URL, l.SiteAuthor)
 	if v.Text != "" {
 		return v
 	}
@@ -51,8 +49,28 @@ func newPostView(l *store.Link, showDate, editable bool) postView {
 			return v
 		}
 	}
-	v.Text, v.Byline = l.Title, ""
+	v.Text = l.Title
+	// A tweet's title is "Name (@nick)" already; a TikTok name may be the nick.
+	if tweet || strings.EqualFold(l.Title, l.SiteAuthor) {
+		v.Byline = ""
+	}
 	return v
+}
+
+// byline is the author of what a link points to, written as their site does:
+// "@nick" for tweets and TikTok, "u/nick" for Reddit posts; other links have none.
+func byline(rawURL, author string) string {
+	u, err := url.Parse(rawURL)
+	if author == "" || err != nil {
+		return ""
+	}
+	switch {
+	case links.Tweet(rawURL), links.TikTokPage(u):
+		return "@" + author
+	case links.RedditPost(u):
+		return "u/" + author
+	}
+	return ""
 }
 
 // maxPostText keeps a fetched text to about a line of the feed.

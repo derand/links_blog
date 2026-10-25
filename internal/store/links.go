@@ -17,7 +17,7 @@ type Link struct {
 	Note            string // the author's full text if Description is its beginning
 	Title           string
 	SiteDescription string
-	SiteAuthor      string // who wrote what the link points to, e.g. a tweet's author nick without "@"
+	SiteAuthor      string // who wrote what the link points to: the nick of a tweet's, Reddit or TikTok post's author, without "@" or "u/"
 	Day             string // YYYY-MM-DD
 	CreatedAt       time.Time
 	UpdatedAt       time.Time

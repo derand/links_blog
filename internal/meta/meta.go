@@ -68,7 +68,8 @@ func Permanent(err error) bool {
 		cert    *tls.CertificateVerificationError
 	)
 	switch {
-	case errors.As(err, &blocked), errors.Is(err, ErrBlockedAddress), errors.Is(err, errScheme), errors.As(err, &cert):
+	case errors.As(err, &blocked), errors.Is(err, ErrBlockedAddress), errors.Is(err, errScheme), errors.Is(err, errNoPost),
+		errors.As(err, &cert):
 		return true
 	case errors.As(err, &status):
 		return status.Code >= 400 && status.Code < 500 && status.Code != 408 && status.Code != 429
@@ -79,8 +80,10 @@ func Permanent(err error) bool {
 }
 
 type Fetcher struct {
-	client *http.Client
-	fxAPI  string // FxTwitter API base, see twitter.go
+	client    *http.Client
+	fxAPI     string // FxTwitter API base, see twitter.go
+	redditAPI string // oEmbed endpoints, see oembed.go
+	tiktokAPI string
 }
 
 // New returns a fetcher whose requests time out after timeout.
@@ -113,7 +116,7 @@ func newFetcher(timeout time.Duration, allowed func(netip.Addr) bool) *Fetcher {
 		MaxIdleConns:          10,
 		IdleConnTimeout:       30 * time.Second,
 	}
-	return &Fetcher{fxAPI: fxTwitterAPI, client: &http.Client{
+	return &Fetcher{fxAPI: fxTwitterAPI, redditAPI: redditOEmbed, tiktokAPI: tiktokOEmbed, client: &http.Client{
 		Transport: transport,
 		Timeout:   timeout,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
@@ -134,7 +137,8 @@ func checkScheme(scheme string) error {
 
 // Fetch downloads the page at url and returns its metadata. Pages that are not
 // HTML have none. Guard pages instead of the content give a *BlockedError.
-// Tweets and X profiles are asked from FxTwitter.
+// Tweets and X profiles are asked from FxTwitter, Reddit posts and TikTok
+// pages from the sites' oEmbed.
 func (f *Fetcher) Fetch(ctx context.Context, url string) (Metadata, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
@@ -145,6 +149,9 @@ func (f *Fetcher) Fetch(ctx context.Context, url string) (Metadata, error) {
 	}
 	if p := twitterAPIPath(req.URL); p != "" {
 		return f.fetchTwitter(ctx, p)
+	}
+	if api := f.oembedAPI(req.URL); api != "" {
+		return f.fetchOEmbed(ctx, api, url)
 	}
 	req.Header.Set("User-Agent", userAgent)
 	req.Header.Set("Accept", "text/html,application/xhtml+xml;q=0.9,*/*;q=0.1")
@@ -180,8 +187,11 @@ func (f *Fetcher) Fetch(ctx context.Context, url string) (Metadata, error) {
 
 var (
 	loginPath = regexp.MustCompile(`(?i)/(log-?in|sign-?in|auth|checkpoint)(/|\.|$)`)
-	botCheck  = regexp.MustCompile(`(?i)^(just a moment|attention required|checking (you are not a bot|your browser)|` +
-		`verifying you are human|are you a robot|one more step|ddos-guard|access denied)`)
+	// Titles of pages that stand in for the content: bot checks (Cloudflare,
+	// Anubis and the like) and JavaScript redirects, e.g. on parked domains.
+	guardTitle = regexp.MustCompile(`(?i)^(just a moment|attention required|checking (you are not a bot|your browser)|` +
+		`verifying you are human|are you a robot|one more step|ddos-guard|access denied|` +
+		`making sure you['’]re not a bot|client challenge|i challenge thee|bot verification|redirecting\W*$)`)
 )
 
 // head is what a page's <head> says about it.
@@ -193,7 +203,7 @@ type head struct {
 // metadata picks the page's title and description: og: and twitter: tags win
 // over <title> and the plain description. On a page below the site's root,
 // a title that is just the site's name (Reddit, Facebook) is a login wall or
-// a JavaScript stub, and a bot-check title is a guard: both are errors.
+// a JavaScript stub, and a bot-check or redirect title is a guard: both are errors.
 func (h head) metadata(u *url.URL) (Metadata, error) {
 	m := Metadata{Description: first(maxDesc, h.ogDesc, h.twitterDesc, h.desc)}
 	deep := u != nil && (strings.Trim(u.Path, "/") != "" || u.RawQuery != "")
@@ -203,8 +213,8 @@ func (h head) metadata(u *url.URL) (Metadata, error) {
 		switch {
 		case t == "":
 			continue
-		case botCheck.MatchString(t):
-			return Metadata{}, &BlockedError{"bot check page: " + t}
+		case guardTitle.MatchString(t):
+			return Metadata{}, &BlockedError{"guard page: " + t}
 		case deep && siteName(t, u.Hostname()):
 			generic = t
 			continue
